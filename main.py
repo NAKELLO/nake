@@ -7,7 +7,7 @@ import os
 TOKEN = '7748542247:AAH_y9C_LPTHDp74WNHN4HZHLpl-NuB-13s'
 ADMIN_ID = 6927494520
 
-# Каналдар
+# Міндетті каналдар
 CHANNELS = ['@Gey_Angime', '@Qazhuboyndar']
 
 bot = telebot.TeleBot(TOKEN)
@@ -18,7 +18,7 @@ PHOTOS_FILE = 'photos.json'
 VIDEOS_FILE = 'videos.json'
 BONUS_FILE = 'bonus.json'
 
-# JSON жүктеу/сақтау
+# JSON функциялары
 def load_json(file):
     if not os.path.exists(file):
         with open(file, 'w') as f:
@@ -33,7 +33,7 @@ def save_json(file, data):
     with open(file, 'w') as f:
         json.dump(data, f, indent=2)
 
-# Тіркелу тексерісі
+# Арнаға тіркелу тексерісі
 def is_subscribed(user_id):
     for channel in CHANNELS:
         try:
@@ -50,11 +50,9 @@ def start(message):
     user_id = str(message.from_user.id)
 
     if not is_subscribed(message.from_user.id):
-        join_links = "\n".join([f"👉 {link}" for link in CHANNELS])
-        bot.send_message(
-            message.chat.id,
-            f"🚫 Ботты қолдану үшін мына каналдарға тіркеліңіз:\n\n{join_links}\n\nТіркеліп болған соң /start деп қайта жазыңыз."
-        )
+        links = "\n".join([f"👉 {ch}" for ch in CHANNELS])
+        bot.send_message(message.chat.id,
+                         f"🚫 Ботты пайдалану үшін келесі каналдарға тіркеліңіз:\n\n{links}\n\n✅ Тіркелген соң /start деп жазыңыз.")
         return
 
     users = load_json(USERS_FILE)
@@ -69,27 +67,27 @@ def start(message):
         }
         bonus[user_id] = 0
 
-        # Реферал коды арқылы кірсе
         if message.text.startswith('/start ') and len(message.text.split()) == 2:
             ref_id = message.text.split()[1]
             if ref_id != user_id and ref_id in users:
                 if user_id not in users[ref_id]['invited']:
                     users[ref_id]['invited'].append(user_id)
-                    bonus[ref_id] += 2
-                    bot.send_message(ref_id, '🎉 Сізге 2 бонус қосылды!')
+                    if not users[ref_id].get('invited_bonus_given', False):
+                        bonus[ref_id] += 2
+                        users[ref_id]['invited_bonus_given'] = True
+                        bot.send_message(ref_id, '🎉 Сізге 2 бонус жазылды!')
 
     save_json(USERS_FILE, users)
     save_json(BONUS_FILE, bonus)
 
-    # Түймелер
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add('🎥 Видео', '🖼 Фото', '🎁 Бонус', '🛒 Сатып алу')
-    if message.from_user.id == ADMIN_ID:
+    if user_id == str(ADMIN_ID):
         markup.add('📢 Хабарлама жіберу')
 
-    bot.send_message(message.chat.id, "Қош келдіңіз!", reply_markup=markup)
+    bot.send_message(message.chat.id, 'Қош келдіңіз!', reply_markup=markup)
 
-# Видео
+# Видео көру
 @bot.message_handler(func=lambda m: m.text == '🎥 Видео')
 def send_video(message):
     user_id = str(message.from_user.id)
@@ -105,14 +103,14 @@ def send_video(message):
         users[user_id]['videos'] += 1
         bonus[user_id] -= 1
     elif not video_list:
-        bot.send_message(message.chat.id, 'Әзірге видео жоқ.')
+        bot.send_message(message.chat.id, '📭 Видео жоқ.')
     else:
-        bot.send_message(message.chat.id, 'Бонус жетіспейді. Адам шақырып жинаңыз.')
+        bot.send_message(message.chat.id, '🎁 Бонусыңыз жоқ. Дос шақырып алыңыз.')
 
     save_json(USERS_FILE, users)
     save_json(BONUS_FILE, bonus)
 
-# Фото
+# Фото көру
 @bot.message_handler(func=lambda m: m.text == '🖼 Фото')
 def send_photo(message):
     user_id = str(message.from_user.id)
@@ -128,9 +126,9 @@ def send_photo(message):
         users[user_id]['photos'] += 1
         bonus[user_id] -= 1
     elif not photo_list:
-        bot.send_message(message.chat.id, 'Әзірге фото жоқ.')
+        bot.send_message(message.chat.id, '📭 Фото жоқ.')
     else:
-        bot.send_message(message.chat.id, 'Бонус жетіспейді. Адам шақырып жинаңыз.')
+        bot.send_message(message.chat.id, '🎁 Бонусыңыз жоқ. Дос шақырып алыңыз.')
 
     save_json(USERS_FILE, users)
     save_json(BONUS_FILE, bonus)
@@ -141,26 +139,25 @@ def check_bonus(message):
     user_id = str(message.from_user.id)
     bonus = load_json(BONUS_FILE)
     users = load_json(USERS_FILE)
-    invited = users.get(user_id, {}).get('invited', [])
     ref_link = f'https://t.me/Darvinuyatszdaribot?start={user_id}'
-
-    bot.send_message(
-        message.chat.id,
-        f'Сізде {bonus.get(user_id, 0)} бонус бар.\n'
-        f'Сіз {len(invited)} адам шақырдыңыз.\n'
-        f'Шақыру сілтемеңіз: {ref_link}'
-    )
+    invited = users.get(user_id, {}).get('invited', [])
+    bot.send_message(message.chat.id,
+                     f'Сізде {bonus.get(user_id, 0)} бонус бар.\n'
+                     f'{len(invited)} адам шақырдыңыз.\n'
+                     f'Шақыру сілтемеңіз: {ref_link}')
 
 # Сатып алу
 @bot.message_handler(func=lambda m: m.text == '🛒 Сатып алу')
 def buy(message):
-    text = ('450 видеосы бар аралас 500 тг\n'
-            'Детский аралас 1000 тг\n'
-            'Чисто детский 1500 тг + 2 канал\n'
-            '2000 тг 5 канал\n'
-            '2500 тг 10 канал\n'
-            '3000 тг 20 канал (барлығын алу)\n\n'
-            'Жаз: @KazHubALU')
+    text = (
+        '450 видеосы бар аралас — 500 тг\n'
+        'Детский аралас — 1000 тг\n'
+        'Чисто детский — 1500 тг + 2 канал қосамыз\n'
+        '2000 тг — 5 канал\n'
+        '2500 тг — 10 канал\n'
+        '3000 тг — 20 канал + бәрі бірге\n\n'
+        'Байланыс: @KazHubALU'
+    )
     bot.send_message(message.chat.id, text)
 
 # Админ хабарлама
@@ -168,17 +165,17 @@ def buy(message):
 def admin_broadcast(message):
     if message.from_user.id != ADMIN_ID:
         return
-    msg = bot.send_message(message.chat.id, "Жіберетін хабарламаны жазыңыз:")
+    msg = bot.send_message(message.chat.id, 'Жіберілетін хабарламаны жазыңыз:')
     bot.register_next_step_handler(msg, send_broadcast)
 
 def send_broadcast(msg):
     users = load_json(USERS_FILE)
-    for uid in users:
+    for user_id in users:
         try:
-            bot.send_message(uid, msg.text)
+            bot.send_message(user_id, msg.text)
         except:
             pass
-    bot.send_message(msg.chat.id, "Хабарлама жіберілді ✅")
+    bot.send_message(msg.chat.id, 'Хабарлама жіберілді ✅')
 
 # Фото қосу
 @bot.message_handler(content_types=['photo'])
@@ -189,7 +186,7 @@ def add_photo(message):
     photo_id = message.photo[-1].file_id
     photos.setdefault('all', []).append(photo_id)
     save_json(PHOTOS_FILE, photos)
-    bot.reply_to(message, "Фото сақталды ✅")
+    bot.reply_to(message, 'Фото сақталды ✅')
 
 # Видео қосу
 @bot.message_handler(content_types=['video'])
@@ -200,8 +197,7 @@ def add_video(message):
     video_id = message.video.file_id
     videos.setdefault('all', []).append(video_id)
     save_json(VIDEOS_FILE, videos)
-    bot.reply_to(message, "Видео сақталды ✅")
+    bot.reply_to(message, 'Видео сақталды ✅')
 
-# Бот басталды
-print("🤖 Бот сәтті іске қосылды!")
+print('🤖 Бот сәтті іске қосылды!')
 bot.polling(none_stop=True)
