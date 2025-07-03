@@ -3,22 +3,19 @@ from telebot import types
 import json
 import os
 
-# Бот токен мен админ ID
-TOKEN = '7748542247:AAH_y9C_LPTHDp74WNHN4HZHLpl-NuB-13s'
+# Бот токені мен админ ID
+TOKEN = '7748542247:AAFvfLMx25tohG6eOjnyEYXueC0FDFUJXxE'
 ADMIN_ID = 6927494520
-
-# Міндетті каналдар
 CHANNELS = ['@Gey_Angime', '@Qazhuboyndar']
 
 bot = telebot.TeleBot(TOKEN)
 
-# Файл жолдары
 USERS_FILE = 'users.json'
 PHOTOS_FILE = 'photos.json'
 VIDEOS_FILE = 'videos.json'
 BONUS_FILE = 'bonus.json'
 
-# JSON функциялары
+# JSON оқу/жазу
 def load_json(file):
     if not os.path.exists(file):
         with open(file, 'w') as f:
@@ -33,7 +30,7 @@ def save_json(file, data):
     with open(file, 'w') as f:
         json.dump(data, f, indent=2)
 
-# Арнаға тіркелу тексерісі
+# Арналарға тіркелу тексерісі
 def is_subscribed(user_id):
     for channel in CHANNELS:
         try:
@@ -44,15 +41,13 @@ def is_subscribed(user_id):
             return False
     return True
 
-# /start
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = str(message.from_user.id)
 
     if not is_subscribed(message.from_user.id):
-        links = "\n".join([f"👉 {ch}" for ch in CHANNELS])
-        bot.send_message(message.chat.id,
-                         f"🚫 Ботты пайдалану үшін келесі каналдарға тіркеліңіз:\n\n{links}\n\n✅ Тіркелген соң /start деп жазыңыз.")
+        join_links = "\n".join([f"👉 {link}" for link in CHANNELS])
+        bot.send_message(message.chat.id, f"🚫 Ботты қолдану үшін келесі каналдарға тіркеліңіз:\n\n{join_links}\n\nТіркелген соң /start деп қайта жазыңыз.")
         return
 
     users = load_json(USERS_FILE)
@@ -87,7 +82,6 @@ def start(message):
 
     bot.send_message(message.chat.id, 'Қош келдіңіз!', reply_markup=markup)
 
-# Видео көру
 @bot.message_handler(func=lambda m: m.text == '🎥 Видео')
 def send_video(message):
     user_id = str(message.from_user.id)
@@ -103,14 +97,13 @@ def send_video(message):
         users[user_id]['videos'] += 1
         bonus[user_id] -= 1
     elif not video_list:
-        bot.send_message(message.chat.id, '📭 Видео жоқ.')
+        bot.send_message(message.chat.id, 'Әзірге видео жоқ.')
     else:
-        bot.send_message(message.chat.id, '🎁 Бонусыңыз жоқ. Дос шақырып алыңыз.')
+        bot.send_message(message.chat.id, 'Бонус жетіспейді, шақыру арқылы жинаңыз.')
 
     save_json(USERS_FILE, users)
     save_json(BONUS_FILE, bonus)
 
-# Фото көру
 @bot.message_handler(func=lambda m: m.text == '🖼 Фото')
 def send_photo(message):
     user_id = str(message.from_user.id)
@@ -126,14 +119,13 @@ def send_photo(message):
         users[user_id]['photos'] += 1
         bonus[user_id] -= 1
     elif not photo_list:
-        bot.send_message(message.chat.id, '📭 Фото жоқ.')
+        bot.send_message(message.chat.id, 'Әзірге фото жоқ.')
     else:
-        bot.send_message(message.chat.id, '🎁 Бонусыңыз жоқ. Дос шақырып алыңыз.')
+        bot.send_message(message.chat.id, 'Бонус жетіспейді, шақыру арқылы жинаңыз.')
 
     save_json(USERS_FILE, users)
     save_json(BONUS_FILE, bonus)
 
-# Бонус
 @bot.message_handler(func=lambda m: m.text == '🎁 Бонус')
 def check_bonus(message):
     user_id = str(message.from_user.id)
@@ -141,31 +133,26 @@ def check_bonus(message):
     users = load_json(USERS_FILE)
     ref_link = f'https://t.me/Darvinuyatszdaribot?start={user_id}'
     invited = users.get(user_id, {}).get('invited', [])
-    bot.send_message(message.chat.id,
-                     f'Сізде {bonus.get(user_id, 0)} бонус бар.\n'
-                     f'{len(invited)} адам шақырдыңыз.\n'
-                     f'Шақыру сілтемеңіз: {ref_link}')
+    bot.send_message(message.chat.id, f'Сізде {bonus.get(user_id, 0)} бонус бар.\n'
+                                      f'Сіз {len(invited)} адам шақырдыңыз.\n'
+                                      f'Шақыру сілтемеңіз: {ref_link}')
 
-# Сатып алу
 @bot.message_handler(func=lambda m: m.text == '🛒 Сатып алу')
 def buy(message):
-    text = (
-        '450 видеосы бар аралас — 500 тг\n'
-        'Детский аралас — 1000 тг\n'
-        'Чисто детский — 1500 тг + 2 канал қосамыз\n'
-        '2000 тг — 5 канал\n'
-        '2500 тг — 10 канал\n'
-        '3000 тг — 20 канал + бәрі бірге\n\n'
-        'Байланыс: @KazHubALU'
-    )
+    text = ('450 видеосы бар аралас 500 тг\n'
+            'Детский аралас 1000 тг\n'
+            'Чисто детский 1500 тг +2 канал қосып береміз\n'
+            '2000 тг 5 канал\n'
+            '2500 тг 10 канал\n'
+            '3000 тг 20 канал жоғарыдағылардың бәрін алу\n'
+            'Жаз: @KazHubALU')
     bot.send_message(message.chat.id, text)
 
-# Админ хабарлама
 @bot.message_handler(func=lambda m: m.text == '📢 Хабарлама жіберу')
 def admin_broadcast(message):
     if message.from_user.id != ADMIN_ID:
         return
-    msg = bot.send_message(message.chat.id, 'Жіберілетін хабарламаны жазыңыз:')
+    msg = bot.send_message(message.chat.id, 'Жібергіңіз келетін хабарламаны жазыңыз:')
     bot.register_next_step_handler(msg, send_broadcast)
 
 def send_broadcast(msg):
@@ -177,7 +164,6 @@ def send_broadcast(msg):
             pass
     bot.send_message(msg.chat.id, 'Хабарлама жіберілді ✅')
 
-# Фото қосу
 @bot.message_handler(content_types=['photo'])
 def add_photo(message):
     if message.from_user.id != ADMIN_ID:
@@ -188,7 +174,6 @@ def add_photo(message):
     save_json(PHOTOS_FILE, photos)
     bot.reply_to(message, 'Фото сақталды ✅')
 
-# Видео қосу
 @bot.message_handler(content_types=['video'])
 def add_video(message):
     if message.from_user.id != ADMIN_ID:
