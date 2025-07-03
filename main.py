@@ -31,7 +31,7 @@ def save_json(file, data):
     with open(file, 'w') as f:
         json.dump(data, f, indent=2)
 
-# 📌 Арнаға тіркелгенін тексеру
+# 📌 Арналарға тіркелуді тексеру
 def is_subscribed(user_id):
     for channel in CHANNELS:
         try:
@@ -66,7 +66,7 @@ def start(message):
         }
         bonus[user_id] = 0
 
-        # 🔁 Реферал бонус (шексіз бонус алу)
+        # 🔁 Шексіз реферал бонус
         if message.text.startswith('/start ') and len(message.text.split()) == 2:
             ref_id = message.text.split()[1]
             if ref_id != user_id and ref_id in users:
@@ -196,5 +196,6 @@ def add_video(message):
     save_json(VIDEOS_FILE, videos)
     bot.reply_to(message, 'Видео сақталды ✅')
 
+# ✅ Ботты іске қосу
 print("🤖 Бот іске қосылды!")
 bot.polling(none_stop=True)
