@@ -2,7 +2,7 @@ from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 import json, os, logging
 
-API_TOKEN = '7748542247:AAFvfLMx25tohG6eOjnyEYXueC0FDFUJXxE'
+API_TOKEN = 'СЕНІҢ_БОТ_ТОКЕНІҢ_МҰНДА_ҚОЙ'
 ADMIN_ID = 6927494520
 BOT_USERNAME = 'Darvinuyatszdaribot'  # 🔁 Бот username дәл осылай жазыңыз
 
