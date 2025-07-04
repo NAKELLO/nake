@@ -67,6 +67,6 @@ async def stats(message: types.Message):
         total = len(users)
         await message.answer(f"📊 Жүйеде барлығы {total} қолданушы тіркелген.")
 
-# ⭐️ Бастау
-if name == 'main':
+# ⭐️ Запуск бота
+if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
