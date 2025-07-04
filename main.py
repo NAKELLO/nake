@@ -4,21 +4,17 @@ import logging
 import json
 import os
 
-# 🔐 СЕНІҢ ДЕРЕКТЕРІҢ
-API_TOKEN = '7748542247:AAFvfLMx25tohG6eOjnyEYXueC0FDFUJXxE'  # Бот токен
-ADMIN_ID = 6927494520  # Сенің Telegram ID
+# 🔐 Мынаны ӨЗІҢІЗДІҢ мәндермен ауыстырыңыз!
+API_TOKEN = '7748542247:AAFvfLMx25tohG6eOjnyEYXueC0FDFUJXxE'  # Мысалы: '123456789:AAFx_xx_xxxXXxx-xxxxXXx'
+ADMIN_ID = 6927494520  # @userinfobot арқылы алынған ID
 CHANNELS = ['@darvinteioria', '@Qazhuboyndar']
 
-PHOTO_FILE_ID = 'PHOTO_FILE_ID'  # Фотоның file_id-сі
-VIDEO_FILE_ID = 'VIDEO_FILE_ID'  # Видеоның file_id-сі
+PHOTO_FILE_ID = 'AgACAgUAAx...СУРЕТТІҢ_file_id'  # Telegram-нан алған photo file_id
+VIDEO_FILE_ID = 'BAACAgUAAx...ВИДЕОНЫҢ_file_id'  # Telegram-нан алған video file_id
 
-logging.basicConfig(level=logging.INFO)
-bot = Bot(token=API_TOKEN)
-dp = Dispatcher(bot)
-
+# 🌐 Базаны дайындау
 DATA_FILE = "users.json"
 
-# 📂 База жүктеу
 if os.path.exists(DATA_FILE):
     with open(DATA_FILE, "r") as f:
         users = json.load(f)
@@ -29,6 +25,14 @@ def save_data():
     with open(DATA_FILE, "w") as f:
         json.dump(users, f)
 
+# 🔧 Логтар
+logging.basicConfig(level=logging.INFO)
+
+# 📦 Aiogram бот объектілері
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher(bot)
+
+# ✅ Арналарға жазылу тексерісі
 async def is_subscribed(user_id):
     for channel in CHANNELS:
         try:
@@ -39,6 +43,7 @@ async def is_subscribed(user_id):
             return False
     return True
 
+# 🔘 /start командасы
 @dp.message_handler(commands=['start'])
 async def start_handler(message: types.Message):
     user_id = str(message.from_user.id)
@@ -62,10 +67,12 @@ async def start_handler(message: types.Message):
 
         save_data()
 
+    # Каналға жазылғанын тексеру
     if not await is_subscribed(message.from_user.id):
         channels_list = '\n'.join([f'👉 {c}' for c in CHANNELS])
         return await message.answer(f"📢 Жалғастыру үшін мына арналарға тіркеліңіз:\n{channels_list}")
 
+    # Басты мәзір
     kb = InlineKeyboardMarkup(row_width=2)
     kb.add(
         InlineKeyboardButton("📷 Фото көру", callback_data="view_photo"),
@@ -79,6 +86,7 @@ async def start_handler(message: types.Message):
         reply_markup=kb
     )
 
+# 🖼 Фото және 🎥 Видео көру
 @dp.callback_query_handler(lambda c: c.data in ["view_photo", "view_video"])
 async def handle_view(call: types.CallbackQuery):
     user_id = str(call.from_user.id)
@@ -94,18 +102,19 @@ async def handle_view(call: types.CallbackQuery):
     if action == "view_photo":
         if users[user_id]['bonus'] >= photo_cost:
             users[user_id]['bonus'] -= photo_cost
-            await bot.send_photo(call.from_user.id, PHOTO_FILE_ID, caption="📸 Фотоңыз дайын!")
+            await bot.send_photo(call.from_user.id, PHOTO_FILE_ID, caption="📸 Фото дайын!")
         else:
-            await call.message.answer("❗️ Фото көру үшін 4 бонус қажет.\n🎁 Реферал арқылы бонус жинаңыз.")
+            await call.message.answer("❗️ Фото көру үшін 4 бонус қажет.\n🎁 Бонус жинау үшін реферал сілтемеңізді таратыңыз.")
     elif action == "view_video":
         if users[user_id]['bonus'] >= video_cost:
             users[user_id]['bonus'] -= video_cost
             await bot.send_video(call.from_user.id, VIDEO_FILE_ID, caption="🎬 Видео дайын!")
         else:
-            await call.message.answer("❗️ Видео көру үшін 3 бонус қажет.\n🎁 Реферал арқылы бонус жинаңыз.")
+            await call.message.answer("❗️ Видео көру үшін 3 бонус қажет.\n🎁 Бонус жинау үшін реферал сілтемеңізді таратыңыз.")
 
     save_data()
 
+# 🎁 Реферал сілтемесі
 @dp.callback_query_handler(lambda c: c.data == "get_bonus")
 async def get_bonus(call: types.CallbackQuery):
     user_id = str(call.from_user.id)
@@ -117,12 +126,13 @@ async def get_bonus(call: types.CallbackQuery):
         f"Әр тіркелген адам үшін +2 бонус аласыз!"
     )
 
+# 📊 Статистика (тек админге)
 @dp.message_handler(commands=['stat'])
 async def stats(message: types.Message):
     if message.from_user.id == ADMIN_ID:
         total = len(users)
         await message.answer(f"📊 Жалпы тіркелген қолданушылар саны: {total}")
 
-# ⭐️ Дұрыс басталу блогы
-if name == 'main':
+# 🚀 Ботты іске қосу — МІНЕ ОСЫ ЖОЛ ДҰРЫС!
+if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
