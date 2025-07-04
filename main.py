@@ -1,7 +1,6 @@
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 import logging
-import asyncio
 import json
 import os
 
@@ -14,7 +13,7 @@ dp = Dispatcher(bot)
 
 DATA_FILE = "users.json"
 
-# Жүктеу
+# Деректерді жүктеу
 if os.path.exists(DATA_FILE):
     with open(DATA_FILE, "r") as f:
         users = json.load(f)
@@ -68,6 +67,6 @@ async def stats(message: types.Message):
         total = len(users)
         await message.answer(f"📊 Жүйеде барлығы {total} қолданушы тіркелген.")
 
-# ⛔ Міне осы жерді түзет: name -> name
+# ✅ Міне мына жол ДҰРЫС
 if name == 'main':
     executor.start_polling(dp, skip_updates=True)
