@@ -4,8 +4,8 @@ import json
 import os
 import logging
 
-API_TOKEN = '7748542247:AAFvfLMx25tohG6eOjnyEYXueC0FDFUJXxE'  # ← осы жерге токенді қой
-ADMIN_ID = 6927494520  # ← админ ID
+API_TOKEN = '7748542247:AAFvfLMx25tohG6eOjnyEYXueC0FDFUJXxE'  # <-- Осы жерге өз токеніңді қой
+ADMIN_ID = 6927494520  # <-- Өз Telegram ID
 CHANNELS = ['@Gey_Angime', '@Qazhuboyndar']
 
 bot = Bot(token=API_TOKEN)
@@ -15,6 +15,7 @@ logging.basicConfig(level=logging.INFO)
 USERS_FILE = 'users.json'
 BONUS_FILE = 'bonus.json'
 
+# JSON жүктеу
 def load_json(file):
     if not os.path.exists(file):
         return {}
@@ -24,11 +25,12 @@ def load_json(file):
         except:
             return {}
 
+# JSON сақтау
 def save_json(file, data):
     with open(file, 'w') as f:
         json.dump(data, f, indent=2)
 
-# 👇 Арналарға тіркелгенін тексеру
+# Арналарға тіркелгенін тексеру
 async def check_subscription(user_id):
     for channel in CHANNELS:
         try:
@@ -39,24 +41,23 @@ async def check_subscription(user_id):
             return False
     return True
 
-# 🟢 /start командасы
+# /start хэндлер
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     user_id = str(message.from_user.id)
-
-    # 👇 Алдымен каналға тіркелгенін тексереміз
-    if not await check_subscription(message.from_user.id):
-        text = "🚫 Ботты пайдалану үшін келесі арналарға тіркеліңіз:\n"
-        text += "\n".join([f"👉 {c}" for c in CHANNELS])
-        text += "\n\n✅ Тіркелген соң /start деп қайта жазыңыз."
-        await message.answer(text)
-        return
-
-    # 👇 Егер тіркелген болса, бонус пен қолданушыны тіркейміз
     users = load_json(USERS_FILE)
     bonus = load_json(BONUS_FILE)
 
+    # Тек жаңа қолданушылардан тіркелуді талап етеді
     if user_id not in users:
+        if not await check_subscription(message.from_user.id):
+            text = "🚫 Ботты пайдалану үшін келесі арналарға тіркеліңіз:\n"
+            text += "\n".join([f"👉 {c}" for c in CHANNELS])
+            text += "\n\n✅ Тіркелген соң /start деп қайта жазыңыз."
+            await message.answer(text)
+            return
+
+        # Жаңа қолданушы тіркеу
         users[user_id] = {"videos": 0, "photos": 0, "invited": []}
         bonus[user_id] = 2
 
@@ -70,10 +71,10 @@ async def start(message: types.Message):
                 except:
                     pass
 
-    save_json(USERS_FILE, users)
-    save_json(BONUS_FILE, bonus)
+        save_json(USERS_FILE, users)
+        save_json(BONUS_FILE, bonus)
 
-    # 👇 Батырмалар
+    # Меню батырмалары
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add(KeyboardButton("🎥 Видео"), KeyboardButton("🖼 Фото"))
     kb.add(KeyboardButton("🎁 Бонус"))
@@ -82,7 +83,7 @@ async def start(message: types.Message):
 
     await message.answer("Қош келдіңіз!", reply_markup=kb)
 
-# 📦 Polling
+# Ботты іске қосу
 if __name__ == '__main__':
     print("🤖 Бот іске қосылды!")
     executor.start_polling(dp, skip_updates=True)
