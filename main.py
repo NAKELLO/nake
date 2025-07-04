@@ -2,9 +2,10 @@ from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 import json, os, logging
 
-API_TOKEN = '7748542247:AAFvfLMx25tohG6eOjnyEYXueC0FDFUJXxE'
-ADMIN_ID = 6927494520
-BOT_USERNAME = 'Darvinuyatszdaribot'
+API_TOKEN = '7748542247:AAFvfLMx25tohG6eOjnyEYXueC0FDFUJXxE'  # Мында өзіңнің токеніңді жаз
+ADMIN_ID = 6927494520  # Өз Telegram ID
+BOT_USERNAME = 'Darvinuyatszdaribot'  # Өз боттың username-і (ботқа @ қоймай жаз)
+
 CHANNELS = ['@Gey_Angime', '@Qazhuboyndar']
 
 bot = Bot(token=API_TOKEN)
@@ -16,6 +17,7 @@ BONUS_FILE = 'bonus.json'
 PHOTOS_FILE = 'photos.json'
 VIDEOS_FILE = 'videos.json'
 
+# ---------------------- JSON Functions ----------------------
 def load_json(file):
     if not os.path.exists(file):
         return {}
@@ -29,6 +31,7 @@ def save_json(file, data):
     with open(file, 'w') as f:
         json.dump(data, f, indent=2)
 
+# ---------------------- Subscription Check ----------------------
 async def check_subscription(user_id):
     for channel in CHANNELS:
         try:
@@ -39,6 +42,7 @@ async def check_subscription(user_id):
             return False
     return True
 
+# ---------------------- Start Command ----------------------
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     user_id = str(message.from_user.id)
@@ -76,6 +80,7 @@ async def start(message: types.Message):
 
     await message.answer("Қош келдіңіз!", reply_markup=kb)
 
+# ---------------------- Handlers ----------------------
 @dp.message_handler(lambda m: m.text == "🎥 Видео")
 async def video_handler(message: types.Message):
     user_id = str(message.from_user.id)
@@ -83,12 +88,13 @@ async def video_handler(message: types.Message):
     users = load_json(USERS_FILE)
     videos = load_json(VIDEOS_FILE).get("all", [])
 
-    if not videos:
-        await message.answer("📛 Видео жоқ.")
-        return
-
     if message.from_user.id != ADMIN_ID and bonus.get(user_id, 0) < 3:
         await message.answer("❌ Видео көру үшін 3 бонус қажет. Реферал арқылы жинаңыз.")
+        return
+
+    if not videos:
+        if message.from_user.id == ADMIN_ID:
+            await message.answer("⚠️ Видео тізімі бос.")
         return
 
     index = users[user_id]["videos"] % len(videos)
@@ -107,12 +113,13 @@ async def photo_handler(message: types.Message):
     users = load_json(USERS_FILE)
     photos = load_json(PHOTOS_FILE).get("all", [])
 
-    if not photos:
-        await message.answer("📛 Фото жоқ.")
-        return
-
     if message.from_user.id != ADMIN_ID and bonus.get(user_id, 0) < 4:
         await message.answer("❌ Фото көру үшін 4 бонус қажет. Реферал арқылы жинаңыз.")
+        return
+
+    if not photos:
+        if message.from_user.id == ADMIN_ID:
+            await message.answer("⚠️ Фото тізімі бос.")
         return
 
     index = users[user_id]["photos"] % len(photos)
@@ -163,6 +170,8 @@ async def save_photo(message: types.Message):
         photos.setdefault("all", []).append(photo_id)
         save_json(PHOTOS_FILE, photos)
         await message.answer("✅ Фото сақталды.")
+    else:
+        await message.answer("⚠️ Фото табылмады.")
 
 @dp.message_handler(content_types=['video'])
 async def save_video(message: types.Message):
@@ -174,7 +183,10 @@ async def save_video(message: types.Message):
         videos.setdefault("all", []).append(video_id)
         save_json(VIDEOS_FILE, videos)
         await message.answer("✅ Видео сақталды.")
+    else:
+        await message.answer("⚠️ Видео табылмады.")
 
+# ---------------------- Start Bot ----------------------
 if __name__ == '__main__':
     print("🤖 Бот іске қосылды!")
     executor.start_polling(dp, skip_updates=True)
