@@ -1,70 +1,72 @@
-@bot.message_handler(func=lambda m: m.text == '🎁 Бонус')
-def check_bonus(message):
-    user_id = str(message.from_user.id)
-    bonus = load_json(BONUS_FILE)
-    users = load_json(USERS_FILE)
-    invited = users.get(user_id, {}).get('invited', [])
-    ref_link = f'https://t.me/Darvinuyatszdaribot?start={user_id}'
-    bot.send_message(message.chat.id,
-                     f'🎁 Сізде {bonus.get(user_id, 0)} бонус бар.\n'
-                     f'👥 Шақырған адам саны: {len(invited)}\n'
-                     f'🔗 Сілтеме: {ref_link}')
+import logging
+from aiogram import Bot, Dispatcher, types, executor
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.dispatcher.filters import CommandStart
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+import sqlite3
 
-@bot.message_handler(func=lambda m: m.text == '🛒 Сатып алу')
-def buy(message):
-    text = (
-        '450 видеосы бар аралас – 500 тг\n'
-        'Детский аралас – 1000 тг\n'
-        'Чисто детский – 1500 тг + 2 канал бонус\n'
-        '2000 тг – 5 канал\n'
-        '2500 тг – 10 канал\n'
-        '3000 тг – 20 канал (бәрін аласың)\n\n'
-        'Жаз: @KazHubALU'
-    )
-    bot.send_message(message.chat.id, text)
+API_TOKEN = '7748542247:AAFvfLMx25tohG6eOjnyEYXueC0FDFUJXxE'
+ADMIN_ID = 6927494520
+CHANNEL_USERNAME = "@darvinteioria"
 
-@bot.message_handler(func=lambda m: m.text == '👥 Қолданушылар саны')
-def user_count(message):
+logging.basicConfig(level=logging.INFO)
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher(bot, storage=MemoryStorage())
+
+# База
+conn = sqlite3.connect("users.db")
+cursor = conn.cursor()
+cursor.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, bonus INTEGER DEFAULT 0, referrer_id INTEGER)")
+conn.commit()
+
+# Функция: каналға тіркелген бе?
+async def check_subscription(user_id):
+    member = await bot.get_chat_member(chat_id=CHANNEL_USERNAME, user_id=user_id)
+    return member.status in ['member', 'creator', 'administrator']
+
+# Старт
+@dp.message_handler(commands=['start'])
+async def start_handler(message: types.Message):
+    user_id = message.from_user.id
+    args = message.get_args()
+    cursor.execute("SELECT * FROM users WHERE id=?", (user_id,))
+    user = cursor.fetchone()
+
+    if not await check_subscription(user_id):
+        return await message.answer("Алдымен каналға тіркеліңіз: @darvinteioria")
+
+    if not user:
+        referrer_id = int(args) if args.isdigit() else None
+        cursor.execute("INSERT INTO users (id, bonus, referrer_id) VALUES (?, ?, ?)", (user_id, 2, referrer_id))
+        if referrer_id:
+            cursor.execute("UPDATE users SET bonus = bonus + 1 WHERE id = ?", (referrer_id,))
+        conn.commit()
+        await message.answer("Тіркелдіңіз! Сізге 2 бонус жазылды ✅")
+    else:
+        await message.answer("Қайта оралдыңыз!")
+
+    referral_link = f"https://t.me/Darvinuyatszdaribot?start={user_id}"
+    cursor.execute("SELECT bonus FROM users WHERE id=?", (user_id,))
+    bonus = cursor.fetchone()[0]
+    await message.answer(f"Сізде {bonus} бонус бар.\nСілтемеңіз: {referral_link}")
+
+# Бонус көру
+@dp.message_handler(commands=['bonus'])
+async def bonus_handler(message: types.Message):
+    user_id = message.from_user.id
+    cursor.execute("SELECT bonus FROM users WHERE id=?", (user_id,))
+    result = cursor.fetchone()
+    bonus = result[0] if result else 0
+    await message.answer(f"Сізде {bonus} бонус бар.")
+
+# Админге статистика
+@dp.message_handler(commands=['stats'])
+async def stats_handler(message: types.Message):
     if message.from_user.id != ADMIN_ID:
         return
-    users = load_json(USERS_FILE)
-    bot.send_message(message.chat.id, f'👥 Жалпы қолданушы саны: {len(users)}')
+    cursor.execute("SELECT COUNT(*) FROM users")
+    total = cursor.fetchone()[0]
+    await message.answer(f"Жүйеде {total} қолданушы бар.")
 
-@bot.message_handler(func=lambda m: m.text == '📢 Хабарлама жіберу')
-def admin_broadcast(message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    msg = bot.send_message(message.chat.id, '✉️ Хабарламаны жазыңыз:')
-    bot.register_next_step_handler(msg, send_broadcast)
-
-def send_broadcast(msg):
-    users = load_json(USERS_FILE)
-    for user_id in users:
-        try:
-            bot.send_message(user_id, msg.text)
-        except:
-            pass
-    bot.send_message(msg.chat.id, '✅ Хабарлама жіберілді!')
-
-@bot.message_handler(content_types=['photo'])
-def add_photo(message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    photos = load_json(PHOTOS_FILE)
-    photo_id = message.photo[-1].file_id
-    photos.setdefault('all', []).append(photo_id)
-    save_json(PHOTOS_FILE, photos)
-    bot.reply_to(message, '✅ Фото сақталды.')
-
-@bot.message_handler(content_types=['video'])
-def add_video(message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    videos = load_json(VIDEOS_FILE)
-    video_id = message.video.file_id
-    videos.setdefault('all', []).append(video_id)
-    save_json(VIDEOS_FILE, videos)
-    bot.reply_to(message, '✅ Видео сақталды.')
-
-print("🤖 Бот іске қосылды!")
-bot.polling(none_stop=True)
+if name == 'main':
+    executor.start_polling(dp, skip_updates=True)
