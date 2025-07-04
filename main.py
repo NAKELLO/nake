@@ -1,12 +1,12 @@
-from aiogram import Bot, Dispatcher, executor, types
+from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 import logging
 import asyncio
 import json
 import os
 
-API_TOKEN = '7748542247:AAFvfLMx25tohG6eOjnyEYXueC0FDFUJXxE'  # Бот токені
-ADMIN_ID = 6927494520  # Админ ID
+API_TOKEN = '7748542247:AAFvfLMx25tohG6eOjnyEYXueC0FDFUJXxE'
+ADMIN_ID = 6927494520
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
@@ -14,7 +14,7 @@ dp = Dispatcher(bot)
 
 DATA_FILE = "users.json"
 
-# users.json файл бар болса жүктейміз, болмаса жаңасын құрамыз
+# Файл бар болса, жүктеу
 if os.path.exists(DATA_FILE):
     with open(DATA_FILE, "r") as f:
         users = json.load(f)
@@ -42,19 +42,16 @@ async def start_handler(message: types.Message):
                 users[user_id]["bonus"] += 2
                 users[user_id]["invited_by"] = inviter_id
                 users[inviter_id]["bonus"] += 1
-                await bot.send_message(int(inviter_id), f"🎉 Жаңа қолданушы сенікімен тіркелді! +1 бонус ✨")
+                await bot.send_message(inviter_id, f"🎉 Жаңа қолданушы тіркелді! +1 бонус ✨")
 
     save_data()
 
     referral_link = f"https://t.me/Darvinuyatszdaribot?start={user_id}"
 
-    kb = InlineKeyboardMarkup().add(
-        InlineKeyboardButton("🎁 Бонус алу", callback_data="get_bonus")
-    )
-
+    kb = InlineKeyboardMarkup().add(InlineKeyboardButton("🎁 Бонус алу", callback_data="get_bonus"))
     await message.answer(
         f"Қош келдің, {message.from_user.first_name}!\n\n"
-        f"Сенің реферальды сілтемең:\n{referral_link}\n\n"
+        f"Сенің реф. сілтемең:\n{referral_link}\n\n"
         f"Қазір бонусың: {users[user_id]['bonus']} ⭐️",
         reply_markup=kb
     )
@@ -69,7 +66,9 @@ async def get_bonus(call: types.CallbackQuery):
 async def stats(message: types.Message):
     if message.from_user.id == ADMIN_ID:
         total = len(users)
-        await message.answer(f"📊 Жүйеде барлығы {total} қолданушы тіркелген.")
+        await message.answer(f"📊 Жүйеде барлығы {total} қолданушы бар.")
 
+# 👉 Осы жерді дұрыстадық:
 if name == 'main':
+    from aiogram import executor
     executor.start_polling(dp, skip_updates=True)
