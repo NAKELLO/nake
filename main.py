@@ -2,9 +2,10 @@ from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 import json, os, logging
 
-API_TOKEN = '7748542247:AAFvfLMx25tohG6eOjnyEYXueC0FDFUJXxE'
+API_TOKEN = 'СЕНІҢ_БОТ_ТОКЕНІҢ_МҰНДА_ҚОЙ'
 ADMIN_ID = 6927494520
-BOT_USERNAME = 'Darvinuyatszdaribot'  # 🔁 Бот username дәл осылай жазыңыз
+BOT_USERNAME = 'Darvinuyatszdaribot'
+CHANNELS = ['@darvinteioria', '@Qazhuboyndar']
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
@@ -29,9 +30,26 @@ def save_json(file, data):
     with open(file, 'w') as f:
         json.dump(data, f, indent=2)
 
+# ---------------------- Subscription Check ----------------------
+async def check_subscription(user_id):
+    for channel in CHANNELS:
+        try:
+            member = await bot.get_chat_member(channel, user_id)
+            if member.status not in ["member", "administrator", "creator"]:
+                return False
+        except:
+            return False
+    return True
+
 # ---------------------- Start Command ----------------------
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
+    is_subscribed = await check_subscription(message.from_user.id)
+    if not is_subscribed:
+        links = "\n".join([f"👉 {c}" for c in CHANNELS])
+        await message.answer(f"📛 Ботты қолдану үшін келесі арналарға тіркеліңіз:\n\n{links}\n\n✅ Тіркелген соң /start деп қайта жазыңыз.")
+        return
+
     user_id = str(message.from_user.id)
     users = load_json(USERS_FILE)
     bonus = load_json(BONUS_FILE)
