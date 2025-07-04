@@ -14,7 +14,7 @@ dp = Dispatcher(bot)
 
 DATA_FILE = "users.json"
 
-# Файл бар болса жүктеу, болмаса бастау
+# Файл бар болса жүктеу, болмаса бос дикт ашу
 if os.path.exists(DATA_FILE):
     with open(DATA_FILE, "r") as f:
         users = json.load(f)
@@ -67,3 +67,7 @@ async def stats(message: types.Message):
     if message.from_user.id == ADMIN_ID:
         total = len(users)
         await message.answer(f"📊 Жүйеде барлығы {total} қолданушы тіркелген.")
+
+# МІНДЕТТІ түрде қос
+if name == 'main':
+    executor.start_polling(dp, skip_updates=True)
