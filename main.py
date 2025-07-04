@@ -17,7 +17,7 @@ cursor = conn.cursor()
 cursor.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, bonus INTEGER DEFAULT 0, referrer_id INTEGER)")
 conn.commit()
 
-# Каналға тіркелуді тексеру
+# Каналға тіркелген бе?
 async def check_subscription(user_id):
     try:
         member = await bot.get_chat_member(chat_id=CHANNEL_USERNAME, user_id=user_id)
@@ -25,7 +25,7 @@ async def check_subscription(user_id):
     except:
         return False
 
-# Старт
+# /start
 @dp.message_handler(commands=['start'])
 async def start_handler(message: types.Message):
     user_id = message.from_user.id
@@ -60,7 +60,7 @@ async def bonus_button(message: types.Message):
     bonus = result[0] if result else 0
     await message.answer(f"Сізде {bonus} бонус бар.")
 
-# /bonus командасы
+# /bonus
 @dp.message_handler(commands=['bonus'])
 async def bonus_handler(message: types.Message):
     user_id = message.from_user.id
@@ -69,7 +69,7 @@ async def bonus_handler(message: types.Message):
     bonus = result[0] if result else 0
     await message.answer(f"Сізде {bonus} бонус бар.")
 
-# /stats – админге ғана
+# /stats (admin only)
 @dp.message_handler(commands=['stats'])
 async def stats_handler(message: types.Message):
     if message.from_user.id != ADMIN_ID:
