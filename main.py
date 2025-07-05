@@ -2,9 +2,9 @@ from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 import json, os, logging
 
-API_TOKEN = '7748542247:AAFvfLMx25tohG6eOjnyEYXueC0FDFUJXxE'  # Мында өзіңнің токеніңді жаз
-ADMIN_ID = 6927494520  # Өз Telegram ID
-BOT_USERNAME = 'Darvinuyatszdaribot'  # Өз боттың username-і (ботқа @ қоймай жаз)
+API_TOKEN = '7748542247:AAFvfLMx25tohG6eOjnyEYXueC0FDFUJXxE'
+ADMIN_ID = 6927494520
+BOT_USERNAME = 'Darvinuyatszdaribot'
 
 CHANNELS = ['@Gey_Angime', '@Qazhuboyndar']
 
@@ -17,10 +17,8 @@ BONUS_FILE = 'bonus.json'
 PHOTOS_FILE = 'photos.json'
 VIDEOS_FILE = 'videos.json'
 
-# Хабарлама жіберу рұқсатын сақтау үшін
 admin_waiting_broadcast = {}
 
-# ---------------------- JSON Functions ----------------------
 def load_json(file):
     if not os.path.exists(file):
         return {}
@@ -34,7 +32,6 @@ def save_json(file, data):
     with open(file, 'w') as f:
         json.dump(data, f, indent=2)
 
-# ---------------------- Subscription Check ----------------------
 async def check_subscription(user_id):
     for channel in CHANNELS:
         try:
@@ -45,9 +42,11 @@ async def check_subscription(user_id):
             return False
     return True
 
-# ---------------------- Start Command ----------------------
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
+    if message.chat.type != 'private':
+        return
+
     user_id = str(message.from_user.id)
     users = load_json(USERS_FILE)
     bonus = load_json(BONUS_FILE)
@@ -83,8 +82,7 @@ async def start(message: types.Message):
 
     await message.answer("Қош келдіңіз!", reply_markup=kb)
 
-# ---------------------- Handlers ----------------------
-@dp.message_handler(lambda m: m.text == "🎥 Видео")
+@dp.message_handler(lambda m: m.chat.type == 'private' and m.text == "🎥 Видео")
 async def video_handler(message: types.Message):
     user_id = str(message.from_user.id)
     bonus = load_json(BONUS_FILE)
@@ -96,8 +94,7 @@ async def video_handler(message: types.Message):
         return
 
     if not videos:
-        if message.from_user.id == ADMIN_ID:
-            await message.answer("⚠️ Видео тізімі бос.")
+        await message.answer("⚠️ Видео табылмады.")
         return
 
     index = users[user_id]["videos"] % len(videos)
@@ -109,7 +106,7 @@ async def video_handler(message: types.Message):
     save_json(BONUS_FILE, bonus)
     save_json(USERS_FILE, users)
 
-@dp.message_handler(lambda m: m.text == "🖼 Фото")
+@dp.message_handler(lambda m: m.chat.type == 'private' and m.text == "🖼 Фото")
 async def photo_handler(message: types.Message):
     user_id = str(message.from_user.id)
     bonus = load_json(BONUS_FILE)
@@ -121,8 +118,7 @@ async def photo_handler(message: types.Message):
         return
 
     if not photos:
-        if message.from_user.id == ADMIN_ID:
-            await message.answer("⚠️ Фото тізімі бос.")
+        await message.answer("⚠️ Фото табылмады.")
         return
 
     index = users[user_id]["photos"] % len(photos)
@@ -134,29 +130,32 @@ async def photo_handler(message: types.Message):
     save_json(BONUS_FILE, bonus)
     save_json(USERS_FILE, users)
 
-@dp.message_handler(lambda m: m.text == "🎁 Бонус")
+@dp.message_handler(lambda m: m.chat.type == 'private' and m.text == "🎁 Бонус")
 async def bonus_handler(message: types.Message):
     user_id = str(message.from_user.id)
     bonus = load_json(BONUS_FILE)
     users = load_json(USERS_FILE)
+    if user_id not in users:
+        await message.answer("Алдымен /start командасын басыңыз.")
+        return
     ref = f"https://t.me/{BOT_USERNAME}?start={user_id}"
     await message.answer(f"🎁 Бонус: {bonus.get(user_id, 0)}\n👥 Шақырғандар саны: {len(users[user_id]['invited'])}\n🔗 Сілтеме: {ref}")
 
-@dp.message_handler(lambda m: m.text == "👥 Қолданушылар саны")
+@dp.message_handler(lambda m: m.chat.type == 'private' and m.text == "👥 Қолданушылар саны")
 async def user_count(message: types.Message):
     if message.from_user.id == ADMIN_ID:
         users = load_json(USERS_FILE)
         await message.answer(f"👥 Қолданушылар саны: {len(users)}")
 
-@dp.message_handler(lambda m: m.text == "📢 Хабарлама жіберу")
+@dp.message_handler(lambda m: m.chat.type == 'private' and m.text == "📢 Хабарлама жіберу")
 async def broadcast_prompt(message: types.Message):
     if message.from_user.id == ADMIN_ID:
         admin_waiting_broadcast[message.from_user.id] = True
         await message.answer("✉️ Хабарламаны жазыңыз:")
 
-@dp.message_handler(lambda m: m.from_user.id == ADMIN_ID)
+@dp.message_handler(lambda m: m.chat.type == 'private')
 async def send_broadcast(message: types.Message):
-    if admin_waiting_broadcast.get(message.from_user.id):
+    if message.from_user.id == ADMIN_ID and admin_waiting_broadcast.get(message.from_user.id):
         users = load_json(USERS_FILE)
         for user_id in users:
             try:
@@ -168,7 +167,7 @@ async def send_broadcast(message: types.Message):
 
 @dp.message_handler(content_types=['photo'])
 async def save_photo(message: types.Message):
-    if message.from_user.id != ADMIN_ID:
+    if message.chat.type != 'private' or message.from_user.id != ADMIN_ID:
         return
     photos = load_json(PHOTOS_FILE)
     if message.photo:
@@ -181,7 +180,7 @@ async def save_photo(message: types.Message):
 
 @dp.message_handler(content_types=['video'])
 async def save_video(message: types.Message):
-    if message.from_user.id != ADMIN_ID:
+    if message.chat.type != 'private' or message.from_user.id != ADMIN_ID:
         return
     videos = load_json(VIDEOS_FILE)
     if message.video:
@@ -192,7 +191,6 @@ async def save_video(message: types.Message):
     else:
         await message.answer("⚠️ Видео табылмады.")
 
-# ---------------------- Start Bot ----------------------
 if __name__ == '__main__':
     print("🤖 Бот іске қосылды!")
-    executor.start_polling(dp, skip_updates=True)
+    executor.start_po
