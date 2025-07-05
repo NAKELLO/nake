@@ -110,7 +110,6 @@ async def video_handler(message: types.Message):
     await message.answer_video(videos[index])
     users[user_id]["videos"] += 1
     bonus[user_id] -= 3
-    save_json(VIDEOS_FILE, {"all": videos})
     save_json(USERS_FILE, users)
     save_json(BONUS_FILE, bonus)
 
@@ -133,7 +132,6 @@ async def photo_handler(message: types.Message):
     await message.answer_photo(photos[index])
     users[user_id]["photos"] += 1
     bonus[user_id] -= 4
-    save_json(PHOTOS_FILE, {"all": photos})
     save_json(USERS_FILE, users)
     save_json(BONUS_FILE, bonus)
 
@@ -156,9 +154,36 @@ async def kids_handler(message: types.Message):
     await message.answer_video(kids_videos[index])
     users[user_id]["kids"] += 1
     bonus[user_id] -= 6
-    save_json(KIDS_VIDEOS_FILE, {"all": kids_videos})
     save_json(USERS_FILE, users)
     save_json(BONUS_FILE, bonus)
+
+# ✅ Видео сақтау (тек админге)
+@dp.message_handler(content_types=types.ContentType.VIDEO)
+async def save_video(message: types.Message):
+    if message.from_user.id == ADMIN_ID:
+        videos = load_json(VIDEOS_FILE).get("all", [])
+        videos.append(message.video.file_id)
+        save_json(VIDEOS_FILE, {"all": videos})
+        await message.reply("✅ Видео сақталды.")
+
+# ✅ Фото сақтау (тек админге)
+@dp.message_handler(content_types=types.ContentType.PHOTO)
+async def save_photo(message: types.Message):
+    if message.from_user.id == ADMIN_ID:
+        photos = load_json(PHOTOS_FILE).get("all", [])
+        photo_id = message.photo[-1].file_id
+        photos.append(photo_id)
+        save_json(PHOTOS_FILE, {"all": photos})
+        await message.reply("✅ Фото сақталды.")
+
+# ✅ Детский видео сақтау (тек админ, "детский" сөзі caption-да болу керек)
+@dp.message_handler(lambda m: m.caption and "детский" in m.caption.lower(), content_types=types.ContentType.VIDEO)
+async def save_kids_video(message: types.Message):
+    if message.from_user.id == ADMIN_ID:
+        kids_videos = load_json(KIDS_VIDEOS_FILE).get("all", [])
+        kids_videos.append(message.video.file_id)
+        save_json(KIDS_VIDEOS_FILE, {"all": kids_videos})
+        await message.reply("✅ Детский видео сақталды.")
 
 if __name__ == '__main__':
     print("🤖 Бот іске қосылды!")
