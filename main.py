@@ -43,6 +43,31 @@ async def check_subscription(user_id):
             return False
     return True
 
+@dp.message_handler(lambda m: m.caption and "детский" in m.caption.lower(), content_types=types.ContentType.VIDEO)
+async def save_kids_video(message: types.Message):
+    if message.from_user.id == ADMIN_ID:
+        kids_videos = load_json(KIDS_VIDEOS_FILE).get("all", [])
+        kids_videos.append(message.video.file_id)
+        save_json(KIDS_VIDEOS_FILE, {"all": kids_videos})
+        await message.reply("✅ Детский видео сақталды.")
+
+@dp.message_handler(content_types=types.ContentType.VIDEO)
+async def save_video(message: types.Message):
+    if message.from_user.id == ADMIN_ID:
+        videos = load_json(VIDEOS_FILE).get("all", [])
+        videos.append(message.video.file_id)
+        save_json(VIDEOS_FILE, {"all": videos})
+        await message.reply("✅ Видео сақталды.")
+
+@dp.message_handler(content_types=types.ContentType.PHOTO)
+async def save_photo(message: types.Message):
+    if message.from_user.id == ADMIN_ID:
+        photos = load_json(PHOTOS_FILE).get("all", [])
+        photo_id = message.photo[-1].file_id
+        photos.append(photo_id)
+        save_json(PHOTOS_FILE, {"all": photos})
+        await message.reply("✅ Фото сақталды.")
+
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     if message.chat.type != 'private':
@@ -60,17 +85,19 @@ async def start(message: types.Message):
             return
 
         users[user_id] = {"videos": 0, "photos": 0, "kids": 0, "invited": []}
-        bonus[user_id] = 2
+        if user_id != str(ADMIN_ID):
+            bonus[user_id] = 2
 
         if message.get_args():
             ref_id = message.get_args()
             if ref_id != user_id and ref_id in users and user_id not in users[ref_id]['invited']:
                 users[ref_id]['invited'].append(user_id)
-                bonus[ref_id] += 2
-                try:
-                    await bot.send_message(int(ref_id), "🎉 Сізге 2 бонус қосылды!")
-                except:
-                    pass
+                if ref_id != str(ADMIN_ID):
+                    bonus[ref_id] += 2
+                    try:
+                        await bot.send_message(int(ref_id), "🎉 Сізге 2 бонус қосылды!")
+                    except:
+                        pass
 
         save_json(USERS_FILE, users)
         save_json(BONUS_FILE, bonus)
@@ -102,14 +129,15 @@ async def video_handler(message: types.Message):
         await message.answer("⚠️ Видео табылмады.")
         return
 
-    if bonus.get(user_id, 0) < 3:
+    if message.from_user.id != ADMIN_ID and bonus.get(user_id, 0) < 3:
         await message.answer("❌ Видео көру үшін 3 бонус қажет. Реферал арқылы жинаңыз.")
         return
 
     index = users[user_id]["videos"] % len(videos)
     await message.answer_video(videos[index])
     users[user_id]["videos"] += 1
-    bonus[user_id] -= 3
+    if message.from_user.id != ADMIN_ID:
+        bonus[user_id] -= 3
     save_json(USERS_FILE, users)
     save_json(BONUS_FILE, bonus)
 
@@ -124,14 +152,15 @@ async def photo_handler(message: types.Message):
         await message.answer("⚠️ Фото табылмады.")
         return
 
-    if bonus.get(user_id, 0) < 4:
+    if message.from_user.id != ADMIN_ID and bonus.get(user_id, 0) < 4:
         await message.answer("❌ Фото көру үшін 4 бонус қажет. Реферал арқылы жинаңыз.")
         return
 
     index = users[user_id]["photos"] % len(photos)
     await message.answer_photo(photos[index])
     users[user_id]["photos"] += 1
-    bonus[user_id] -= 4
+    if message.from_user.id != ADMIN_ID:
+        bonus[user_id] -= 4
     save_json(USERS_FILE, users)
     save_json(BONUS_FILE, bonus)
 
@@ -146,44 +175,17 @@ async def kids_handler(message: types.Message):
         await message.answer("⚠️ Детский видеолар жоқ.")
         return
 
-    if bonus.get(user_id, 0) < 6:
+    if message.from_user.id != ADMIN_ID and bonus.get(user_id, 0) < 6:
         await message.answer("❌ Бұл бөлімді көру үшін 6 бонус қажет. Реферал арқылы жинаңыз.")
         return
 
     index = users[user_id]["kids"] % len(kids_videos)
     await message.answer_video(kids_videos[index])
     users[user_id]["kids"] += 1
-    bonus[user_id] -= 6
+    if message.from_user.id != ADMIN_ID:
+        bonus[user_id] -= 6
     save_json(USERS_FILE, users)
     save_json(BONUS_FILE, bonus)
-
-# ✅ Видео сақтау (тек админге)
-@dp.message_handler(content_types=types.ContentType.VIDEO)
-async def save_video(message: types.Message):
-    if message.from_user.id == ADMIN_ID:
-        videos = load_json(VIDEOS_FILE).get("all", [])
-        videos.append(message.video.file_id)
-        save_json(VIDEOS_FILE, {"all": videos})
-        await message.reply("✅ Видео сақталды.")
-
-# ✅ Фото сақтау (тек админге)
-@dp.message_handler(content_types=types.ContentType.PHOTO)
-async def save_photo(message: types.Message):
-    if message.from_user.id == ADMIN_ID:
-        photos = load_json(PHOTOS_FILE).get("all", [])
-        photo_id = message.photo[-1].file_id
-        photos.append(photo_id)
-        save_json(PHOTOS_FILE, {"all": photos})
-        await message.reply("✅ Фото сақталды.")
-
-# ✅ Детский видео сақтау (тек админ, "детский" сөзі caption-да болу керек)
-@dp.message_handler(lambda m: m.caption and "детский" in m.caption.lower(), content_types=types.ContentType.VIDEO)
-async def save_kids_video(message: types.Message):
-    if message.from_user.id == ADMIN_ID:
-        kids_videos = load_json(KIDS_VIDEOS_FILE).get("all", [])
-        kids_videos.append(message.video.file_id)
-        save_json(KIDS_VIDEOS_FILE, {"all": kids_videos})
-        await message.reply("✅ Детский видео сақталды.")
 
 if __name__ == '__main__':
     print("🤖 Бот іске қосылды!")
