@@ -62,6 +62,7 @@ async def start(message: types.Message):
     users = load_json(USERS_FILE)
     bonus = load_json(BONUS_FILE)
 
+    # тек жаңа қолданушы болса ғана тіркелуді сұраймыз
     if user_id not in users:
         is_subscribed = await check_subscription(message.from_user.id)
         if not is_subscribed:
