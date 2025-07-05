@@ -94,27 +94,63 @@ async def start(message: types.Message):
 
 @dp.message_handler(lambda m: m.text == "🎥 Видео")
 async def video_handler(message: types.Message):
+    user_id = str(message.from_user.id)
+    bonus = load_json(BONUS_FILE)
     videos = load_json(VIDEOS_FILE).get("all", [])
+
     if not videos:
         await message.answer("⚠️ Видео жоқ.")
         return
+
+    if user_id != str(ADMIN_ID) and bonus.get(user_id, 0) < 3:
+        await message.answer("❌ Видео көру үшін 3 бонус қажет.")
+        return
+
     await bot.send_video(message.chat.id, videos[-1], caption="🔒 Бұл видеоны тек ботта көруге болады.", supports_streaming=True, protect_content=True)
+
+    if user_id != str(ADMIN_ID):
+        bonus[user_id] -= 3
+        save_json(BONUS_FILE, bonus)
 
 @dp.message_handler(lambda m: m.text == "🖼 Фото")
 async def photo_handler(message: types.Message):
+    user_id = str(message.from_user.id)
+    bonus = load_json(BONUS_FILE)
     photos = load_json(PHOTOS_FILE).get("all", [])
+
     if not photos:
         await message.answer("⚠️ Фото жоқ.")
         return
+
+    if user_id != str(ADMIN_ID) and bonus.get(user_id, 0) < 4:
+        await message.answer("❌ Фото көру үшін 4 бонус қажет.")
+        return
+
     await bot.send_photo(message.chat.id, photos[-1], caption="🔒 Бұл фотоны тек ботта көруге болады.", protect_content=True)
+
+    if user_id != str(ADMIN_ID):
+        bonus[user_id] -= 4
+        save_json(BONUS_FILE, bonus)
 
 @dp.message_handler(lambda m: m.text == "👶 Детский")
 async def kids_handler(message: types.Message):
+    user_id = str(message.from_user.id)
+    bonus = load_json(BONUS_FILE)
     kids = load_json(KIDS_VIDEOS_FILE).get("all", [])
+
     if not kids:
         await message.answer("⚠️ Детский видео жоқ.")
         return
+
+    if user_id != str(ADMIN_ID) and bonus.get(user_id, 0) < 6:
+        await message.answer("❌ Детский видео көру үшін 6 бонус қажет.")
+        return
+
     await bot.send_document(message.chat.id, kids[-1], caption="🔒 Бұл видеоны тек ботта көруге болады.", protect_content=True)
+
+    if user_id != str(ADMIN_ID):
+        bonus[user_id] -= 6
+        save_json(BONUS_FILE, bonus)
 
 @dp.message_handler(lambda m: m.text == "🎁 Бонус")
 async def bonus_handler(message: types.Message):
