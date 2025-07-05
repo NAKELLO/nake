@@ -21,7 +21,6 @@ KIDS_VIDEOS_FILE = 'kids_videos.json'
 
 admin_waiting_broadcast = {}
 
-
 def load_json(file):
     if not os.path.exists(file):
         return {}
@@ -31,11 +30,9 @@ def load_json(file):
         except:
             return {}
 
-
 def save_json(file, data):
     with open(file, 'w') as f:
         json.dump(data, f, indent=2)
-
 
 async def check_subscription(user_id):
     for channel in CHANNELS:
@@ -46,7 +43,6 @@ async def check_subscription(user_id):
         except:
             return False
     return True
-
 
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
@@ -102,25 +98,26 @@ async def start(message: types.Message):
 async def video_handler(message: types.Message):
     await message.answer("🎬 Видео бөлім әзірленуде.")
 
-
 @dp.message_handler(lambda m: m.text == "🖼 Фото")
 async def photo_handler(message: types.Message):
     await message.answer("📷 Фото бөлім әзірленуде.")
-
 
 @dp.message_handler(lambda m: m.text == "👶 Детский")
 async def kids_handler(message: types.Message):
     await message.answer("👶 Детский бөлім әзірленуде.")
 
-
 @dp.message_handler(lambda m: m.text == "🎁 Бонус")
 async def bonus_handler(message: types.Message):
+    if message.chat.type != 'private':
+        return
     user_id = str(message.from_user.id)
     bonus = load_json(BONUS_FILE)
     users = load_json(USERS_FILE)
+    if user_id not in users:
+        await message.answer("⛔ Алдымен /start командасын басыңыз")
+        return
     ref = f"https://t.me/{BOT_USERNAME}?start={user_id}"
     await message.answer(f"🎁 Сізде {bonus.get(user_id, 0)} бонус бар.\n🔗 Сілтеме: {ref}\n👥 Шақырғандар саны: {len(users[user_id]['invited'])}")
-
 
 @dp.message_handler(lambda m: m.text == "👥 Қолданушылар саны")
 async def user_count(message: types.Message):
@@ -128,13 +125,11 @@ async def user_count(message: types.Message):
         users = load_json(USERS_FILE)
         await message.answer(f"👥 Қолданушылар саны: {len(users)}")
 
-
 @dp.message_handler(lambda m: m.text == "📢 Хабарлама жіберу")
 async def broadcast_prompt(message: types.Message):
     if message.from_user.id == ADMIN_ID:
         await message.answer("✉️ Хабарлама мәтінін жазыңыз:")
         admin_waiting_broadcast[message.from_user.id] = True
-
 
 @dp.message_handler()
 async def unknown(message: types.Message):
@@ -151,7 +146,6 @@ async def unknown(message: types.Message):
         await message.answer("✅ Хабарлама жіберілді.")
     else:
         await message.answer("Кешіріңіз, тек төмендегі батырмаларды қолданыңыз.")
-
 
 if __name__ == '__main__':
     print("🤖 Бот іске қосылды!")
