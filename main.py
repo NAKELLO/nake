@@ -49,6 +49,15 @@ async def start(message: types.Message):
     if message.chat.type != 'private':
         return
 
+    # ⛔ Заң тұлғаларын сүзгіден өткізу
+    bad_keywords = ['police', 'gov', 'депутат', 'суд', 'прокуратура', 'din', 'mzrk', 'minjust']
+    username = (message.from_user.username or '').lower()
+    fullname = (message.from_user.full_name or '').lower()
+
+    for word in bad_keywords:
+        if word in username or word in fullname:
+            return  # бот үндемейді
+
     user_id = str(message.from_user.id)
     users = load_json(USERS_FILE)
     bonus = load_json(BONUS_FILE)
