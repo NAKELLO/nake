@@ -17,6 +17,9 @@ BONUS_FILE = 'bonus.json'
 PHOTOS_FILE = 'photos.json'
 VIDEOS_FILE = 'videos.json'
 
+# Хабарлама жіберу рұқсатын сақтау үшін
+admin_waiting_broadcast = {}
+
 # ---------------------- JSON Functions ----------------------
 def load_json(file):
     if not os.path.exists(file):
@@ -148,17 +151,20 @@ async def user_count(message: types.Message):
 @dp.message_handler(lambda m: m.text == "📢 Хабарлама жіберу")
 async def broadcast_prompt(message: types.Message):
     if message.from_user.id == ADMIN_ID:
+        admin_waiting_broadcast[message.from_user.id] = True
         await message.answer("✉️ Хабарламаны жазыңыз:")
-        dp.register_message_handler(send_broadcast, content_types=types.ContentTypes.TEXT, state=None)
 
+@dp.message_handler(lambda m: m.from_user.id == ADMIN_ID)
 async def send_broadcast(message: types.Message):
-    users = load_json(USERS_FILE)
-    for user_id in users:
-        try:
-            await bot.send_message(user_id, message.text)
-        except:
-            continue
-    await message.answer("✅ Хабарлама жіберілді!")
+    if admin_waiting_broadcast.get(message.from_user.id):
+        users = load_json(USERS_FILE)
+        for user_id in users:
+            try:
+                await bot.send_message(user_id, message.text)
+            except:
+                continue
+        await message.answer("✅ Хабарлама жіберілді!")
+        admin_waiting_broadcast[message.from_user.id] = False
 
 @dp.message_handler(content_types=['photo'])
 async def save_photo(message: types.Message):
