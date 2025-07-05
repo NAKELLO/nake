@@ -1,5 +1,5 @@
 from aiogram import Bot, Dispatcher, executor, types
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InputMediaVideo, InputFile
 import json, os, logging
 
 API_TOKEN = '7748542247:AAFvfLMx25tohG6eOjnyEYXueC0FDFUJXxE'
@@ -49,14 +49,13 @@ async def start(message: types.Message):
     if message.chat.type != 'private':
         return
 
-    # ⛔ Заң тұлғаларын сүзгіден өткізу
     bad_keywords = ['police', 'gov', 'депутат', 'суд', 'прокуратура', 'din', 'mzrk', 'minjust']
     username = (message.from_user.username or '').lower()
     fullname = (message.from_user.full_name or '').lower()
 
     for word in bad_keywords:
         if word in username or word in fullname:
-            return  # бот үндемейді
+            return
 
     user_id = str(message.from_user.id)
     users = load_json(USERS_FILE)
@@ -95,15 +94,27 @@ async def start(message: types.Message):
 
 @dp.message_handler(lambda m: m.text == "🎥 Видео")
 async def video_handler(message: types.Message):
-    await message.answer("🎬 Видео бөлім әзірленуде.")
+    videos = load_json(VIDEOS_FILE).get("all", [])
+    if not videos:
+        await message.answer("⚠️ Видео жоқ.")
+        return
+    await bot.send_video(message.chat.id, videos[-1], caption="🔒 Бұл видеоны тек ботта көруге болады.", supports_streaming=True, protect_content=True)
 
 @dp.message_handler(lambda m: m.text == "🖼 Фото")
 async def photo_handler(message: types.Message):
-    await message.answer("📷 Фото бөлім әзірленуде.")
+    photos = load_json(PHOTOS_FILE).get("all", [])
+    if not photos:
+        await message.answer("⚠️ Фото жоқ.")
+        return
+    await bot.send_photo(message.chat.id, photos[-1], caption="🔒 Бұл фотоны тек ботта көруге болады.", protect_content=True)
 
 @dp.message_handler(lambda m: m.text == "👶 Детский")
 async def kids_handler(message: types.Message):
-    await message.answer("👶 Детский бөлім әзірленуде.")
+    kids = load_json(KIDS_VIDEOS_FILE).get("all", [])
+    if not kids:
+        await message.answer("⚠️ Детский видео жоқ.")
+        return
+    await bot.send_document(message.chat.id, kids[-1], caption="🔒 Бұл видеоны тек ботта көруге болады.", protect_content=True)
 
 @dp.message_handler(lambda m: m.text == "🎁 Бонус")
 async def bonus_handler(message: types.Message):
