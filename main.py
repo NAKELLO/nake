@@ -16,6 +16,7 @@ USERS_FILE = 'users.json'
 BONUS_FILE = 'bonus.json'
 PHOTOS_FILE = 'photos.json'
 VIDEOS_FILE = 'videos.json'
+KIDS_VIDEOS_FILE = 'kids_videos.json'
 
 admin_waiting_broadcast = {}
 
@@ -58,7 +59,7 @@ async def start(message: types.Message):
             await message.answer(f"📛 Ботты қолдану үшін келесі арналарға тіркеліңіз:\n\n{links}\n\n✅ Тіркелген соң /start деп қайта жазыңыз.")
             return
 
-        users[user_id] = {"videos": 0, "photos": 0, "invited": []}
+        users[user_id] = {"videos": 0, "photos": 0, "kids": 0, "invited": []}
         bonus[user_id] = 2
 
         if message.get_args():
@@ -76,7 +77,7 @@ async def start(message: types.Message):
 
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add(KeyboardButton("🎥 Видео"), KeyboardButton("🖼 Фото"))
-    kb.add(KeyboardButton("🎁 Бонус"))
+    kb.add(KeyboardButton("👶 Детский"), KeyboardButton("🎁 Бонус"))
     if message.from_user.id == ADMIN_ID:
         kb.add(KeyboardButton("📢 Хабарлама жіберу"), KeyboardButton("👥 Қолданушылар саны"))
 
@@ -126,6 +127,30 @@ async def photo_handler(message: types.Message):
     users[user_id]["photos"] += 1
     if message.from_user.id != ADMIN_ID:
         bonus[user_id] -= 4
+
+    save_json(BONUS_FILE, bonus)
+    save_json(USERS_FILE, users)
+
+@dp.message_handler(lambda m: m.chat.type == 'private' and m.text == "👶 Детский")
+async def kids_handler(message: types.Message):
+    user_id = str(message.from_user.id)
+    bonus = load_json(BONUS_FILE)
+    users = load_json(USERS_FILE)
+    kids_videos = load_json(KIDS_VIDEOS_FILE).get("all", [])
+
+    if message.from_user.id != ADMIN_ID and bonus.get(user_id, 0) < 3:
+        await message.answer("❌ Детский видео көру үшін 3 бонус қажет. Реферал арқылы жинаңыз.")
+        return
+
+    if not kids_videos:
+        await message.answer("⚠️ Детский видео табылмады.")
+        return
+
+    index = users[user_id]["kids"] % len(kids_videos)
+    await message.answer_video(kids_videos[index])
+    users[user_id]["kids"] += 1
+    if message.from_user.id != ADMIN_ID:
+        bonus[user_id] -= 3
 
     save_json(BONUS_FILE, bonus)
     save_json(USERS_FILE, users)
@@ -182,15 +207,21 @@ async def save_photo(message: types.Message):
 async def save_video(message: types.Message):
     if message.chat.type != 'private' or message.from_user.id != ADMIN_ID:
         return
-    videos = load_json(VIDEOS_FILE)
+    if '👶' in message.caption:
+        videos = load_json(KIDS_VIDEOS_FILE)
+    else:
+        videos = load_json(VIDEOS_FILE)
     if message.video:
         video_id = message.video.file_id
         videos.setdefault("all", []).append(video_id)
-        save_json(VIDEOS_FILE, videos)
+        if '👶' in message.caption:
+            save_json(KIDS_VIDEOS_FILE, videos)
+        else:
+            save_json(VIDEOS_FILE, videos)
         await message.answer("✅ Видео сақталды.")
     else:
         await message.answer("⚠️ Видео табылмады.")
 
 if __name__ == '__main__':
     print("🤖 Бот іске қосылды!")
-    executor.start_po
+    executor.start_polling(dp, skip_updates=True)
