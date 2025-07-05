@@ -93,7 +93,6 @@ async def start(message: types.Message):
 
     await message.answer("Қош келдіңіз!", reply_markup=kb)
 
-
 @dp.message_handler(lambda m: m.text == "🎥 Видео")
 async def video_handler(message: types.Message):
     await message.answer("🎬 Видео бөлім әзірленуде.")
@@ -130,6 +129,36 @@ async def broadcast_prompt(message: types.Message):
     if message.from_user.id == ADMIN_ID:
         await message.answer("✉️ Хабарлама мәтінін жазыңыз:")
         admin_waiting_broadcast[message.from_user.id] = True
+
+@dp.message_handler(content_types=types.ContentType.VIDEO)
+async def save_video(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    videos = load_json(VIDEOS_FILE)
+    video_id = message.video.file_id
+    videos.setdefault("all", []).append(video_id)
+    save_json(VIDEOS_FILE, videos)
+    await message.answer("✅ Видео сақталды (жалпы бөлімге).")
+
+@dp.message_handler(content_types=types.ContentType.PHOTO)
+async def save_photo(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    photos = load_json(PHOTOS_FILE)
+    photo_id = message.photo[-1].file_id
+    photos.setdefault("all", []).append(photo_id)
+    save_json(PHOTOS_FILE, photos)
+    await message.answer("✅ Фото сақталды (жалпы бөлімге).")
+
+@dp.message_handler(content_types=types.ContentType.DOCUMENT)
+async def save_kids_video(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    if message.document.mime_type.startswith("video/"):
+        kids = load_json(KIDS_VIDEOS_FILE)
+        kids.setdefault("all", []).append(message.document.file_id)
+        save_json(KIDS_VIDEOS_FILE, kids)
+        await message.answer("✅ Детский видео сақталды.")
 
 @dp.message_handler()
 async def unknown(message: types.Message):
