@@ -6,6 +6,7 @@ API_TOKEN = '7748542247:AAFvfLMx25tohG6eOjnyEYXueC0FDFUJXxE'
 ADMIN_ID = 6927494520
 BOT_USERNAME = 'Darvinuyatszdaribot'
 
+# Каналдар тізімі
 CHANNELS = ['@Gey_Angime', '@Qazhuboyndar', '@oqigalaruyatsiz']
 
 bot = Bot(token=API_TOKEN)
