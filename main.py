@@ -18,8 +18,6 @@ PHOTOS_FILE = 'photos.json'
 VIDEOS_FILE = 'videos.json'
 KIDS_VIDEOS_FILE = 'kids_videos.json'
 
-admin_waiting_broadcast = {}
-
 def load_json(file):
     try:
         if not os.path.exists(file):
@@ -161,3 +159,7 @@ async def kids_handler(message: types.Message):
     save_json(KIDS_VIDEOS_FILE, {"all": kids_videos})
     save_json(USERS_FILE, users)
     save_json(BONUS_FILE, bonus)
+
+if __name__ == '__main__':
+    print("🤖 Бот іске қосылды!")
+    executor.start_polling(dp, skip_updates=True)
