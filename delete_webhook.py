@@ -1,7 +1,7 @@
 from aiogram import Bot
 import asyncio
 
-API_TOKEN = 'СІЗДІҢ_ТОКЕН'  # ← мұнда өзіңіздің нақты токеніңізді жазыңыз
+API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'  # ← мұнда өзіңіздің нақты токеніңізді жазыңыз
 
 async def delete_webhook():
     bot = Bot(token=API_TOKEN)
