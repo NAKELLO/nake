@@ -22,6 +22,7 @@ def get_main_keyboard(user_id):
     kb.add(KeyboardButton("💎 VIP қолжетімділік"))
     if user_id in ADMIN_IDS:
         kb.row(KeyboardButton("📢 Хабарлама жіберу"), KeyboardButton("👥 Қолданушылар саны"))
+        kb.add(KeyboardButton("📥 Видео қосу"))
     return kb
 
 async def check_subscription(user_id):
@@ -89,12 +90,41 @@ async def user_count(message: types.Message):
         await message.answer(f"Қолданушылар саны: {count}")
 
 @dp.message_handler(lambda m: m.text == "📢 Хабарлама жіберу")
+@dp.message_handler(lambda m: m.text == "📥 Видео қосу")
+async def start_video_upload(message: types.Message):
+    if message.from_user.id in ADMIN_IDS:
+        admin_waiting_broadcast[message.from_user.id] = "video_upload"
+        await message.answer("🎬 Видеоларды жіберіңіз. Бірнешеуін қатарымен де жіберуге болады.")
 async def broadcast_start(message: types.Message):
     if message.from_user.id in ADMIN_IDS:
         admin_waiting_broadcast[message.from_user.id] = True
-        await message.answer("Хабарлама мәтінін жіберіңіз:")
+        await message.answer("Хабарлама мәтінін немесе видеоны жіберіңіз:")
 
 @dp.message_handler(content_types=ContentType.VIDEO)
+async def handle_videos(message: types.Message):
+    if message.from_user.id not in ADMIN_IDS:
+        return
+
+    if admin_waiting_broadcast.get(message.from_user.id) != "video_upload":
+        return
+
+    if message.media_group_id:
+        media_id = message.media_group_id
+        if media_id not in media_groups:
+            media_groups[media_id] = []
+        media_groups[media_id].append(message)
+
+        await asyncio.sleep(1.5)
+
+        if media_id in media_groups:
+            for msg in media_groups[media_id]:
+                add_video(msg.video.file_id)
+            count = len(media_groups[media_id])
+            del media_groups[media_id]
+            await message.answer(f"✅ {count} видео сақталды.")
+    else:
+        add_video(message.video.file_id)
+        await message.answer("✅ Видео сақталды.")
 async def handle_videos(message: types.Message):
     if message.from_user.id not in ADMIN_IDS:
         return
