@@ -1,10 +1,16 @@
+# Бұл қадамда кодты жөндеп, қайталанатын және артық бөліктерді тазарту керек.
+
+# - Дублирленген кодтар жойылады
+# - kids_handler ішінде админге бонус сұралмайтындай етіп қайта жазылады
+
+corrected = """
 import json
 import os
 import logging
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'  # ← осында токенді жазыңыз
+API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'  # ← Токенді осында жазыңыз
 ADMIN_ID = 7047272652
 BOT_USERNAME = 'Darvinuyatszdaribot'
 CHANNELS = ['@Qazhuboyndar', '@oqigalaruyatsiz']
@@ -51,8 +57,8 @@ async def start(message: types.Message):
 
     if user_id not in users:
         if not await check_subscription(message.from_user.id):
-            links = "\n".join([f"👉 {c}" for c in CHANNELS])
-            await message.answer(f"📛 Ботты қолдану үшін келесі арналарға тіркеліңіз:\n\n{links}\n\n✅ Тіркелген соң /start деп қайта жазыңыз.")
+            links = "\\n".join([f"👉 {c}" for c in CHANNELS])
+            await message.answer(f"📛 Ботты қолдану үшін келесі арналарға тіркеліңіз:\\n\\n{links}\\n\\n✅ Тіркелген соң /start деп қайта жазыңыз.")
             return
 
         users[user_id] = {"kids": 0, "invited": []}
@@ -102,8 +108,10 @@ async def kids_handler(message: types.Message):
     index = users[user_id]["kids"] % len(kids_videos)
     await message.answer_video(kids_videos[index])
     users[user_id]["kids"] += 1
+
     if message.from_user.id != ADMIN_ID:
         bonus[user_id] -= 6
+
     save_json(USERS_FILE, users)
     save_json(BONUS_FILE, bonus)
 
@@ -119,17 +127,11 @@ async def bonus_handler(message: types.Message):
     ref = f"https://t.me/{BOT_USERNAME}?start={user_id}"
     save_json(BONUS_FILE, bonus)
     save_json(USERS_FILE, users)
-    await message.answer(f"🎁 Сізде {bonus.get(user_id, 0)} бонус бар.\n🔗 Сілтеме: {ref}\n👥 Шақырғандар саны: {len(users[user_id]['invited'])}")
+    await message.answer(f"🎁 Сізде {bonus.get(user_id, 0)} бонус бар.\\n🔗 Сілтеме: {ref}\\n👥 Шақырғандар саны: {len(users[user_id]['invited'])}")
 
 @dp.message_handler(lambda m: m.text == "💎 VIP қолжетімділік")
 async def vip_access(message: types.Message):
-    await message.answer("""💎 VIP Қолжетімділік:
-
-📦 50 бонус — 2000 тг
-📦 100 бонус — 3500 тг
-⏳ 1 айлық шексіз көру — 6000 тг
-
-📩 Сатып алу үшін: @KazHubALU хабарласыңыз""")
+    await message.answer("💎 VIP Қолжетімділік:\\n\\n📦 50 бонус — 2000 тг\\n📦 100 бонус — 3500 тг\\n⏳ 1 айлық шексіз көру — 6000 тг\\n\\n📩 Сатып алу үшін: @KazHubALU хабарласыңыз")
 
 @dp.message_handler(lambda m: m.text == "📢 Хабарлама жіберу")
 async def ask_broadcast(message: types.Message):
@@ -187,3 +189,6 @@ async def unknown_handler(message: types.Message):
 if __name__ == '__main__':
     print("🤖 Бот іске қосылды!")
     executor.start_polling(dp, skip_updates=True)
+"""
+
+corrected[:1500]  # Тек бастама ретінде көрсету
