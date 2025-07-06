@@ -1,9 +1,9 @@
 import logging
+import asyncio
 from aiogram import Bot, Dispatcher, types
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ContentType
 from aiogram.utils.deep_linking import get_start_link
-from database import *  # <-- Базаны қосуды ұмытпа!
-import os
+from database import *
 
 API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'  # <-- Осында өз токеніңді қой!
 ADMIN_IDS = [7047272652, 6927494520]
@@ -14,10 +14,11 @@ dp = Dispatcher(bot)
 logging.basicConfig(level=logging.INFO)
 
 admin_waiting_broadcast = {}
+media_groups = {}
 
 def get_main_keyboard(user_id):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add(KeyboardButton("👶 Детский"), KeyboardButton("🎁 Бонус"))
+    kb.add(KeyboardButton("👶 Детский"), KeyboardButton("🏱 Бонус"))
     kb.add(KeyboardButton("💎 VIP қолжетімділік"))
     if user_id in ADMIN_IDS:
         kb.row(KeyboardButton("📢 Хабарлама жіберу"), KeyboardButton("👥 Қолданушылар саны"))
@@ -52,7 +53,7 @@ async def start_handler(message: types.Message):
 @dp.message_handler(lambda m: m.text == "👶 Детский")
 async def kids_handler(message: types.Message):
     user_id = str(message.from_user.id)
-    video = get_first_video()
+    video = get_random_video()
     if not video:
         return await message.answer("Әзірге видео жоқ.")
 
@@ -63,19 +64,19 @@ async def kids_handler(message: types.Message):
 
     await message.answer_video(video)
 
-@dp.message_handler(lambda m: m.text == "🎁 Бонус")
+@dp.message_handler(lambda m: m.text == "🏱 Бонус")
 async def bonus_handler(message: types.Message):
     user_id = str(message.from_user.id)
     bonus = get_bonus(user_id)
     ref_link = await get_start_link(str(user_id), encode=True)
-    await message.answer(f"🎁 Сізде {bonus} бонус бар.\nДостарыңызды шақырып бонус алыңыз:\n{ref_link}")
+    await message.answer(f"🏱 Сізде {bonus} бонус бар.\nДостарыңызды шақырып бонус алыңыз:\n{ref_link}")
 
 @dp.message_handler(lambda m: m.text == "💎 VIP қолжетімділік")
 async def vip_handler(message: types.Message):
     text = (
         "💎 *VIP қолжетімділік бағасы:*\n\n"
-        "📦 100 бонус – 1500 ₸\n"
-        "📦 200 бонус – 2000 ₸\n"
+        "📆 100 бонус – 1500 ₸\n"
+        "📆 200 бонус – 2000 ₸\n"
         "⏳ 1 ай шектеусіз көру – 4000 ₸\n\n"
         "💳 Төлеу үшін админге жазыңыз: @KazHubALU"
     )
@@ -93,27 +94,43 @@ async def broadcast_start(message: types.Message):
         admin_waiting_broadcast[message.from_user.id] = True
         await message.answer("Хабарлама мәтінін жіберіңіз:")
 
-@dp.message_handler(content_types=["video", "text"])
+@dp.message_handler(content_types=ContentType.VIDEO)
+async def handle_videos(message: types.Message):
+    if message.from_user.id not in ADMIN_IDS:
+        return
+
+    if message.media_group_id:
+        media_id = message.media_group_id
+        if media_id not in media_groups:
+            media_groups[media_id] = []
+        media_groups[media_id].append(message)
+
+        await asyncio.sleep(1.5)
+
+        if media_id in media_groups:
+            for msg in media_groups[media_id]:
+                add_video(msg.video.file_id)
+            count = len(media_groups[media_id])
+            del media_groups[media_id]
+            await message.answer(f"✅ {count} видео сақталды.")
+    else:
+        add_video(message.video.file_id)
+        await message.answer("✅ Видео сақталды.")
+
+@dp.message_handler(content_types=["text"])
 async def handle_all(message: types.Message):
     user_id = message.from_user.id
 
     if user_id in ADMIN_IDS and admin_waiting_broadcast.get(user_id):
         for uid in get_all_users():
             try:
-                if message.video:
-                    await bot.send_video(uid, message.video.file_id, caption=message.caption or "")
-                else:
-                    await bot.send_message(uid, message.text)
+                await bot.send_message(uid, message.text)
             except:
                 pass
         admin_waiting_broadcast[user_id] = False
         return await message.answer("Хабарлама жіберілді!")
 
-    if user_id in ADMIN_IDS and message.video:
-        add_video(message.video.file_id)
-        await message.answer("🎥 Видео сақталды.")
-
 if __name__ == '__main__':
     from aiogram import executor
-    init_db()  # ← База дайын болсын
+    init_db()
     executor.start_polling(dp, skip_updates=True)
