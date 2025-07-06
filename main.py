@@ -149,13 +149,13 @@ async def kids_handler(message: types.Message):
 @dp.message_handler(lambda m: m.text == "💎 VIP қолжетімділік")
 async def vip_access(message: types.Message):
     await message.answer(
-        "💎 VIP Қолжетімділік:
+        """💎 VIP Қолжетімділік:
 
 📦 50 бонус — 2000 тг
 📦 100 бонус — 3500 тг
 ⏳ 1 айлық тегін көру — 6000 тг
 
-📩 Сатып алу үшін: @KazHubALU хабарласыңыз"
+📩 Сатып алу үшін: @KazHubALU хабарласыңыз"""
     )
 
 @dp.message_handler(lambda m: m.text == "👥 Қолданушылар саны")
