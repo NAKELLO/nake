@@ -102,7 +102,6 @@ async def start(message: types.Message):
         save_json(BONUS_FILE, bonus)
 
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add(KeyboardButton("🎥 Видео"), KeyboardButton("🖼 Фото"))
     kb.add(KeyboardButton("👶 Детский"), KeyboardButton("🎁 Бонус"))
     if message.from_user.id == ADMIN_ID:
         kb.add(KeyboardButton("📢 Хабарлама жіберу"), KeyboardButton("👥 Қолданушылар саны"))
@@ -122,52 +121,6 @@ async def bonus_handler(message: types.Message):
     save_json(BONUS_FILE, bonus)
     save_json(USERS_FILE, users)
     await message.answer(f"🎁 Сізде {bonus.get(user_id, 0)} бонус бар.\n🔗 Сілтеме: {ref}\n👥 Шақырғандар саны: {len(users[user_id]['invited'])}")
-
-@dp.message_handler(lambda m: m.text == "🎥 Видео")
-async def video_handler(message: types.Message):
-    user_id = str(message.from_user.id)
-    bonus = load_json(BONUS_FILE)
-    users = load_json(USERS_FILE)
-    videos = load_json(VIDEOS_FILE).get("all", [])
-
-    if not videos:
-        await message.answer("⚠️ Видео табылмады.")
-        return
-
-    if message.from_user.id != ADMIN_ID and bonus.get(user_id, 0) < 3:
-        await message.answer("❌ Видео көру үшін 3 бонус қажет. Реферал арқылы жинаңыз.")
-        return
-
-    index = users[user_id]["videos"] % len(videos)
-    await message.answer_video(videos[index])
-    users[user_id]["videos"] += 1
-    if message.from_user.id != ADMIN_ID:
-        bonus[user_id] -= 3
-    save_json(USERS_FILE, users)
-    save_json(BONUS_FILE, bonus)
-
-@dp.message_handler(lambda m: m.text == "🖼 Фото")
-async def photo_handler(message: types.Message):
-    user_id = str(message.from_user.id)
-    bonus = load_json(BONUS_FILE)
-    users = load_json(USERS_FILE)
-    photos = load_json(PHOTOS_FILE).get("all", [])
-
-    if not photos:
-        await message.answer("⚠️ Фото табылмады.")
-        return
-
-    if message.from_user.id != ADMIN_ID and bonus.get(user_id, 0) < 4:
-        await message.answer("❌ Фото көру үшін 4 бонус қажет. Реферал арқылы жинаңыз.")
-        return
-
-    index = users[user_id]["photos"] % len(photos)
-    await message.answer_photo(photos[index])
-    users[user_id]["photos"] += 1
-    if message.from_user.id != ADMIN_ID:
-        bonus[user_id] -= 4
-    save_json(USERS_FILE, users)
-    save_json(BONUS_FILE, bonus)
 
 @dp.message_handler(lambda m: m.text == "👶 Детский")
 async def kids_handler(message: types.Message):
