@@ -133,15 +133,20 @@ async def kids_handler(message: types.Message):
         await message.answer("⚠️ Детский видеолар жоқ.")
         return
 
-    if message.from_user.id != ADMIN_ID and bonus.get(user_id, 0) < 6:
-        await message.answer("❌ Бұл бөлімді көру үшін 6 бонус қажет. Реферал арқылы жинаңыз.")
-        return
+    if user_id not in users:
+        users[user_id] = {"videos": 0, "photos": 0, "kids": 0, "invited": []}
+    if user_id not in bonus:
+        bonus[user_id] = 2
+
+    if message.from_user.id != ADMIN_ID:
+        if bonus.get(user_id, 0) < 6:
+            await message.answer("❌ Бұл бөлімді көру үшін 6 бонус қажет. Реферал арқылы жинаңыз.")
+            return
+        bonus[user_id] -= 6
 
     index = users[user_id]["kids"] % len(kids_videos)
     await message.answer_video(kids_videos[index])
     users[user_id]["kids"] += 1
-    if message.from_user.id != ADMIN_ID:
-        bonus[user_id] -= 6
     save_json(USERS_FILE, users)
     save_json(BONUS_FILE, bonus)
 
