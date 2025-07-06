@@ -24,10 +24,17 @@ KIDS_VIDEOS_FILE = 'kids_videos.json'
 admin_waiting_broadcast = {}
 
 def load_json(file):
-    if not os.path.exists(file):
-        return {"all": []} if 'videos' in file or 'photos' in file else {}
-    with open(file, 'r') as f:
-        return json.load(f)
+    try:
+        if not os.path.exists(file):
+            return {"all": []} if 'videos' in file or 'photos' in file else {}
+        with open(file, 'r') as f:
+            return json.load(f)
+    except json.JSONDecodeError:
+        logging.error(f"Ошибка декодирования JSON в файле {file}.")
+        return {}
+    except Exception as e:
+        logging.error(f"Ошибка при загрузке файла {file}: {e}")
+        return {}
 
 def save_json(file, data):
     with open(file, 'w') as f:
@@ -85,7 +92,7 @@ async def start(message: types.Message):
 
     await message.answer("Қош келдіңіз!", reply_markup=kb)
 
-@dp.message_handler(lambda m: m.text and m.text.startswith("👶"))
+@dp.message_handler(lambda m: m.text == "👶 Детский")
 async def kids_handler(message: types.Message):
     user_id = str(message.from_user.id)
     bonus = load_json(BONUS_FILE)
