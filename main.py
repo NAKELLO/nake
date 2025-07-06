@@ -34,16 +34,6 @@ def save_json(file, data):
     with open(file, 'w') as f:
         json.dump(data, f, indent=2)
 
-async def check_subscription(user_id):
-    for channel in CHANNELS:
-        try:
-            member = await bot.get_chat_member(channel, user_id)
-            if member.status not in ["member", "administrator", "creator"]:
-                return False
-        except:
-            return False
-    return True
-
 @dp.message_handler(content_types=types.ContentType.VIDEO)
 async def save_kids_video(message: types.Message):
     if message.chat.id in BLOCKED_CHAT_IDS:
@@ -74,12 +64,6 @@ async def start(message: types.Message):
     bonus = load_json(BONUS_FILE)
 
     if user_id not in users:
-        is_subscribed = await check_subscription(message.from_user.id)
-        if not is_subscribed:
-            links = "\n".join([f"👉 {c}" for c in CHANNELS])
-            await message.answer(f"📛 Ботты қолдану үшін келесі арналарға тіркеліңіз:\n\n{links}\n\n✅ Тіркелген соң /start деп қайта жазыңыз.")
-            return
-
         users[user_id] = {"videos": 0, "photos": 0, "kids": 0, "invited": []}
         if user_id != str(ADMIN_ID):
             bonus[user_id] = 2
