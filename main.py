@@ -5,7 +5,8 @@ async def save_kids_video(message: types.Message):
     if message.chat.id in BLOCKED_CHAT_IDS:
         return
 
-    is_admin = message.from_user.id == ADMIN_ID
+    # ЖАҢА АДМИН ID — КОРЕЙКА
+    is_admin = message.from_user.id == 7047272652
 
     if not is_admin:
         await message.reply("🚫 Сізде видео жіберуге рұқсат жоқ.")
