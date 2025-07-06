@@ -1,159 +1,201 @@
 import asyncio
 import logging
-import json
-import os
+import json, os
+
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-# Токен мен администратор идентификаторын енгізіңіз
-API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'  # Сіздің токеніңіз
-ADMIN_ID = 6927494520  # Сіздің Telegram идентификаторыңыз
+API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'
+ADMIN_ID = 6927494520
+BOT_USERNAME = 'Darvinuyatszdaribot'
 
-# Лог жазу конфигурациясы
+BLOCKED_CHAT_IDS = [-1002129935121]
+CHANNELS = ['@Qazhuboyndar', '@oqigalaruyatsiz']
+
 logging.basicConfig(level=logging.INFO)
-
-# Бот пен диспетчерді инициализациялау
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
-# Файлдар
 USERS_FILE = 'users.json'
-KIDS_VIDEOS_FILE = 'kids_videos.json'
+BONUS_FILE = 'bonus.json'
 PHOTOS_FILE = 'photos.json'
+KIDS_VIDEOS_FILE = 'kids_videos.json'
 
-# JSON файлдан деректерді жүктеу функциясы
+admin_waiting_broadcast = {}
+
 def load_json(file):
-    try:
-        if not os.path.exists(file):
-            return {}
-        with open(file, 'r') as f:
-            return json.load(f)
-    except json.JSONDecodeError:
-        logging.error(f"Ошибка декодирования JSON в файле {file}.")
-        return {}
-    except Exception as e:
-        logging.error(f"Ошибка при загрузке файла {file}: {e}")
-        return {}
+    if not os.path.exists(file):
+        return {"all": []} if 'videos' in file or 'photos' in file else {}
+    with open(file, 'r') as f:
+        return json.load(f)
 
-# JSON файлға деректерді сақтау функциясы
 def save_json(file, data):
     with open(file, 'w') as f:
         json.dump(data, f, indent=2)
 
-# Қолданушыны тіркеу функциясы
-def register_user(user_id):
-    users_data = load_json(USERS_FILE)
-    if str(user_id) not in users_data:
-        users_data[str(user_id)] = {"bonus": 0, "referral_link": f"https://t.me/your_bot?start={user_id}"}
-        save_json(USERS_FILE, users_data)
+async def check_subscription(user_id):
+    for channel in CHANNELS:
+        try:
+            member = await bot.get_chat_member(channel, user_id)
+            if member.status not in ["member", "administrator", "creator"]:
+                return False
+        except:
+            return False
+    return True
 
-# Боттың старт командасын өңдеу
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
-    register_user(message.from_user.id)
-    
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-    keyboard.add(KeyboardButton("👶 Детский"))
-    keyboard.add(KeyboardButton("🎁 Бонус"))
-    keyboard.add(KeyboardButton("💎 VIP қолжетімділік"))
-    if message.from_user.id == ADMIN_ID:
-        keyboard.add(KeyboardButton("📢 Хабарлама жіберу"))
-        keyboard.add(KeyboardButton("👥 Қолданушылар саны"))
-    
-    await message.reply("Арналарға тіркелуді сұраймыз.", reply_markup=keyboard)
-
-# Детский видеоларды беру
-@dp.message_handler(lambda message: message.text == "👶 Детский")
-async def send_kids_video(message: types.Message):
-    user_data = load_json(USERS_FILE).get(str(message.from_user.id), {})
-    bonus = user_data.get("bonus", 0)
-
-    if message.from_user.id != ADMIN_ID and bonus < 6:
-        await message.reply("🚫 Бонустарыңыз жеткіліксіз.")
+    if message.chat.type != 'private':
         return
 
-    # Видео жіберу логикасы (мысалы, тізімнен)
-    data = load_json(KIDS_VIDEOS_FILE)
-    if data.get('all'):
-        video_id = data['all'][0]  # Бірінші видеоны алу (немесе кездейсоқ)
-        await bot.send_video(message.chat.id, video_id)
+    user_id = str(message.from_user.id)
+    users = load_json(USERS_FILE)
+    bonus = load_json(BONUS_FILE)
 
-        if message.from_user.id != ADMIN_ID:
-            user_data["bonus"] -= 6
-            save_json(USERS_FILE, {str(message.from_user.id): user_data})
-    else:
-        await message.reply("ℹ️ Видео жоқ.")
+    if user_id not in users:
+        is_subscribed = await check_subscription(message.from_user.id)
+        if not is_subscribed:
+            links = "\n".join([f"👉 {c}" for c in CHANNELS])
+            await message.answer(f"📛 Ботты қолдану үшін келесі арналарға тіркеліңіз:\n\n{links}\n\n✅ Тіркелген соң /start деп қайта жазыңыз.")
+            return
 
-# Бонустарды көрсету
-@dp.message_handler(lambda message: message.text == "🎁 Бонус")
-async def show_bonus(message: types.Message):
-    user_data = load_json(USERS_FILE).get(str(message.from_user.id), {})
-    bonus = user_data.get("bonus", 0)
-    referral_link = user_data.get("referral_link", "")
-    await message.reply(f"Сіздің бонусыңыз: {bonus}\nШақыру сілтемесі: {referral_link}")
+        users[user_id] = {"videos": 0, "photos": 0, "kids": 0, "invited": []}
+        if user_id != str(ADMIN_ID):
+            bonus[user_id] = 2
 
-# VIP қолжетімділік
-@dp.message_handler(lambda message: message.text == "💎 VIP қолжетімділік")
-async def vip_access(message: types.Message):
-    await message.reply("💎 VIP қолжетімділік тарифтері:\n1. 100 бонус - VIP қолжетімділік.\n2. 500 бонус - VIP қолжетімділік + арнайы контент.")
+        if message.get_args():
+            ref_id = message.get_args()
+            if ref_id != user_id and ref_id in users and user_id not in users[ref_id]['invited']:
+                users[ref_id]['invited'].append(user_id)
+                if ref_id != str(ADMIN_ID):
+                    bonus[ref_id] += 2
+                    try:
+                        await bot.send_message(int(ref_id), "🎉 Сізге 2 бонус қосылды!")
+                    except:
+                        pass
 
-# Хабарлама жіберу
-@dp.message_handler(lambda message: message.text == "📢 Хабарлама жіберу")
-async def broadcast_message(message: types.Message):
-    await message.reply("Хабарламаңызды жазыңыз.")
-    await dp.current_state(user=message.from_user.id).set_state("broadcast")
+        save_json(USERS_FILE, users)
+        save_json(BONUS_FILE, bonus)
 
-@dp.message_handler(state="broadcast")
-async def send_broadcast(message: types.Message):
-    users_data = load_json(USERS_FILE)
-    for user_id in users_data.keys():
-        try:
-            await bot.send_message(user_id, message.text)
-        except Exception as e:
-            logging.error(f"Ошибка при отправке сообщения пользователю {user_id}: {e}")
-    await message.reply("📢 Хабарлама барлық қолданушыларға жіберілді.")
-    await dp.current_state(user=message.from_user.id).reset_state()
-
-# Қолданушылар санын шығару
-@dp.message_handler(lambda message: message.text == "👥 Қолданушылар саны")
-async def count_users(message: types.Message):
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add(KeyboardButton("👶 Детский"), KeyboardButton("🎁 Бонус"))
+    kb.add(KeyboardButton("💎 VIP қолжетімділік"))
     if message.from_user.id == ADMIN_ID:
-        users_data = load_json(USERS_FILE)
-        user_count = len(users_data)
-        await message.reply(f"Қолданушылар саны: {user_count}")
-    else:
-        await message.reply("🚫 Сізде бұл әрекетті орындауға рұқсат жоқ.")
+        kb.row(KeyboardButton("📢 Хабарлама жіберу"), KeyboardButton("👥 Қолданушылар саны"))
 
-# Фото қабылдау
+    await message.answer("Қош келдіңіз!", reply_markup=kb)
+
+@dp.message_handler(lambda m: m.text == "👶 Детский")
+async def kids_handler(message: types.Message):
+    user_id = str(message.from_user.id)
+    bonus = load_json(BONUS_FILE)
+    users = load_json(USERS_FILE)
+    kids_videos = load_json(KIDS_VIDEOS_FILE).get("all", [])
+
+    if not kids_videos:
+        await message.answer("⚠️ Детский видеолар жоқ.")
+        return
+
+    if message.from_user.id != ADMIN_ID and bonus.get(user_id, 0) < 6:
+        await message.answer("❌ Бұл бөлімді көру үшін 6 бонус қажет.")
+        return
+
+    index = users[user_id]["kids"] % len(kids_videos)
+    await message.answer_video(kids_videos[index])
+    users[user_id]["kids"] += 1
+    if message.from_user.id != ADMIN_ID:
+        bonus[user_id] -= 6
+    save_json(USERS_FILE, users)
+    save_json(BONUS_FILE, bonus)
+
+@dp.message_handler(lambda m: m.text and m.text.startswith("🎁"))
+async def bonus_handler(message: types.Message):
+    user_id = str(message.from_user.id)
+    bonus = load_json(BONUS_FILE)
+    users = load_json(USERS_FILE)
+    if user_id not in bonus:
+        bonus[user_id] = 2
+    if user_id not in users:
+        users[user_id] = {"videos": 0, "photos": 0, "kids": 0, "invited": []}
+    ref = f"https://t.me/{BOT_USERNAME}?start={user_id}"
+    save_json(BONUS_FILE, bonus)
+    save_json(USERS_FILE, users)
+    await message.answer(f"🎁 Сізде {bonus.get(user_id, 0)} бонус бар.\n🔗 Сілтеме: {ref}\n👥 Шақырғандар саны: {len(users[user_id]['invited'])}")
+
+@dp.message_handler(lambda m: m.text and m.text.startswith("💎"))
+async def vip_access(message: types.Message):
+    await message.answer("""
+💎 VIP Қолжетімділік:
+
+📦 50 бонус — 2000 тг
+📦 100 бонус — 3500 тг
+⏳ 1 айлық тегін көру — 6000 тг
+
+📩 Сатып алу үшін: @KazHubALU хабарласыңыз
+""")
+
+@dp.message_handler(lambda m: m.text and m.text.startswith("📢"))
+async def ask_broadcast(message: types.Message):
+    if message.from_user.id == ADMIN_ID:
+        admin_waiting_broadcast[message.from_user.id] = True
+        await message.answer("✍️ Хабарлама мәтінін жазыңыз:")
+
+@dp.message_handler(lambda m: m.text and m.text.startswith("👥"))
+async def user_count(message: types.Message):
+    if message.from_user.id == ADMIN_ID:
+        users = load_json(USERS_FILE)
+        await message.answer(f"👥 Қолданушылар саны: {len(users)}")
+
 @dp.message_handler(content_types=types.ContentType.PHOTO)
 async def save_photo(message: types.Message):
-    if message.from_user.id == ADMIN_ID:
-        photos_data = load_json(PHOTOS_FILE)
-        photos_data['all'] = photos_data.get('all', [])
-        photos_data['all'].append(message.photo[-1].file_id)
-        save_json(PHOTOS_FILE, photos_data)
+    if message.chat.id in BLOCKED_CHAT_IDS or message.from_user.id != ADMIN_ID:
+        return
+    data = load_json(PHOTOS_FILE)
+    file_id = message.photo[-1].file_id
+    if file_id not in data['all']:
+        data['all'].append(file_id)
+        save_json(PHOTOS_FILE, data)
         await message.reply("✅ Фото сақталды.")
-    else:
-        await message.reply("🚫 Сізде бұл әрекетті орындауға рұқсат жоқ.")
 
-# Видео қабылдау
 @dp.message_handler(content_types=types.ContentType.VIDEO)
-async def save_video(message: types.Message):
-    is_admin = message.from_user.id == ADMIN_ID or (message.forward_from and message.forward_from.id == ADMIN_ID)
-    
+async def save_kids_video(message: types.Message):
+    if message.chat.id in BLOCKED_CHAT_IDS:
+        return
+
+    is_admin = (
+        message.from_user.id == ADMIN_ID or
+        (message.forward_from and message.forward_from.id == ADMIN_ID) or
+        (message.forward_from_chat and message.forward_from_chat.type == 'channel') or
+        (message.sender_chat and message.sender_chat.type == 'channel')
+    )
+
     if is_admin:
         data = load_json(KIDS_VIDEOS_FILE)
         file_id = message.video.file_id
-        if file_id not in data.get('all', []):
-            data.setdefault('all', []).append(file_id)
+        if file_id not in data['all']:
+            data['all'].append(file_id)
             save_json(KIDS_VIDEOS_FILE, data)
-            await message.reply("✅ Видео сақталды.")
+            await message.reply("✅ Детский видео сақталды.")
         else:
             await message.reply("ℹ️ Бұл видео бұрыннан бар.")
-    else:
-        await message.reply("🚫 Сізде бұл әрекетті орындауға рұқсат жоқ.")
 
-# Ботты іске қосу
+@dp.message_handler()
+async def broadcast_or_unknown(message: types.Message):
+    user_id = message.from_user.id
+    if user_id == ADMIN_ID and admin_waiting_broadcast.get(user_id):
+        admin_waiting_broadcast.pop(user_id)
+        users = load_json(USERS_FILE)
+        count = 0
+        for uid in users:
+            try:
+                await bot.send_message(uid, message.text)
+                count += 1
+            except:
+                continue
+        await message.answer(f"📨 Хабарлама {count} адамға жіберілді.")
+    else:
+        await message.answer("🤖 Тек батырмаларды қолданыңыз.")
+
 if __name__ == '__main__':
     print("🤖 Бот іске қосылды!")
     from aiogram import executor
