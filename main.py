@@ -18,7 +18,7 @@ media_groups = {}
 
 def get_main_keyboard(user_id):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add(KeyboardButton("👶 Детский"), KeyboardButton("🏱 Бонус"))
+    kb.add(KeyboardButton("🎬 Видео"), KeyboardButton("🏱 Бонус"))
     kb.add(KeyboardButton("💎 VIP қолжетімділік"))
     if user_id in ADMIN_IDS:
         kb.row(KeyboardButton("📢 Хабарлама жіберу"), KeyboardButton("👥 Қолданушылар саны"))
@@ -51,8 +51,8 @@ async def start_handler(message: types.Message):
 
     await message.answer("Қош келдіңіз!", reply_markup=get_main_keyboard(message.from_user.id))
 
-@dp.message_handler(lambda m: m.text == "👶 Детский")
-async def kids_handler(message: types.Message):
+@dp.message_handler(lambda m: m.text == "🎬 Видео")
+async def video_handler(message: types.Message):
     user_id = str(message.from_user.id)
     video = get_random_video()
 
