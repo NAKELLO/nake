@@ -160,7 +160,6 @@ async def save_photo(message: types.Message):
 
 @dp.message_handler(content_types=types.ContentType.VIDEO)
 async def save_kids_video(message: types.Message):
-    # Админ емес болса, хабарламаны өткізіп жібереміз
     if message.chat.id in BLOCKED_CHAT_IDS:
         return
 
@@ -170,6 +169,9 @@ async def save_kids_video(message: types.Message):
         data = load_json(KIDS_VIDEOS_FILE)
         file_id = message.video.file_id
         
+        # Логирование: видео идентификаторын шығару
+        logging.info(f"Received video with file ID: {file_id}")
+
         # Егер файл ID бұрыннан бар болса, оны сақтамаймыз
         if file_id not in data['all']:
             data['all'].append(file_id)
