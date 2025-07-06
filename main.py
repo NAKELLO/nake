@@ -40,7 +40,8 @@ async def check_subscription(user_id):
             member = await bot.get_chat_member(channel, user_id)
             if member.status not in ["member", "administrator", "creator"]:
                 return False
-        except:
+        except Exception as e:
+            logging.error(f"Error checking subscription: {e}")
             return False
     return True
 
@@ -72,8 +73,8 @@ async def start(message: types.Message):
                     bonus[ref_id] += 2
                     try:
                         await bot.send_message(int(ref_id), "🎉 Сізге 2 бонус қосылды!")
-                    except:
-                        pass
+                    except Exception as e:
+                        logging.error(f"Error sending bonus notification: {e}")
 
         save_json(USERS_FILE, users)
         save_json(BONUS_FILE, bonus)
@@ -88,7 +89,6 @@ async def start(message: types.Message):
 
 @dp.message_handler(lambda m: m.text == "👶 Детский")
 async def kids_handler(message: types.Message):
-    logging.info(f"User {message.from_user.id} requested kids videos.")
     user_id = str(message.from_user.id)
     bonus = load_json(BONUS_FILE)
     users = load_json(USERS_FILE)
@@ -194,13 +194,17 @@ async def broadcast_or_unknown(message: types.Message):
             try:
                 await bot.send_message(uid, message.text)
                 count += 1
-            except:
+            except Exception as e:
+                logging.error(f"Error sending broadcast message: {e}")
                 continue
         await message.answer(f"📨 Хабарлама {count} адамға жіберілді.")
     else:
         await message.answer("🤖 Тек батырмаларды қолданыңыз.")
 
 if __name__ == '__main__':
-    print("🤖 Бот іске қосылды!")
-    from aiogram import executor
-    executor.start_polling(dp, skip_updates=True)
+    try:
+        print("🤖 Бот іске қосылды!")
+        from aiogram import executor
+        executor.start_polling(dp, skip_updates=True)
+    except Exception as e:
+        logging.error(f"Error starting the bot: {e}")
