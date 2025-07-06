@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils.deep_linking import get_start_link, decode_payload
 
-API_TOKEN = 'YOUR_API_TOKEN'
+API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'
 ADMIN_IDS = [7047272652, 6927494520]
 CHANNELS = ['@Qazhuboyndar', '@oqigalaruyatsiz']
 BLOCKED_CHAT_IDS = [-1002129935121]
