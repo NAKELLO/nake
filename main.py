@@ -55,8 +55,8 @@ async def start(message: types.Message):
     if user_id not in users:
         is_subscribed = await check_subscription(message.from_user.id)
         if not is_subscribed:
-            links = "\n".join([f"\uD83D\uDC49 {c}" for c in CHANNELS])
-            await message.answer(f"\uD83D\uDEDB Ботты қолдану үшін келесі арналарға тіркеліңіз:\n\n{links}\n\n✅ Тіркелген соң /start деп қайта жазыңыз.")
+            links = "\n".join([f"👉 {c}" for c in CHANNELS])
+            await message.answer(f"📛 Ботты қолдану үшін келесі арналарға тіркеліңіз:\n\n{links}\n\n✅ Тіркелген соң /start деп қайта жазыңыз.")
             return
 
         users[user_id] = {"videos": 0, "photos": 0, "kids": 0, "invited": []}
@@ -78,7 +78,7 @@ async def start(message: types.Message):
         save_json(BONUS_FILE, bonus)
 
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add(KeyboardButton("👶 Детский"), KeyboardButton("🏱 Бонус"))
+    kb.add(KeyboardButton("👶 Детский"), KeyboardButton("🎁 Бонус"))
     kb.add(KeyboardButton("💎 VIP қолжетімділік"))
     if message.from_user.id == ADMIN_ID:
         kb.add(KeyboardButton("📢 Хабарлама жіберу"), KeyboardButton("👥 Қолданушылар саны"))
@@ -104,7 +104,8 @@ async def save_kids_video(message: types.Message):
     is_admin = (
         message.from_user.id == ADMIN_ID or
         (message.forward_from and message.forward_from.id == ADMIN_ID) or
-        (message.forward_from_chat and message.forward_from_chat.type == 'channel')
+        (message.forward_from_chat and message.forward_from_chat.type == 'channel') or
+        (message.sender_chat and message.sender_chat.type == 'channel')
     )
 
     if is_admin:
@@ -140,7 +141,7 @@ async def kids_handler(message: types.Message):
     save_json(USERS_FILE, users)
     save_json(BONUS_FILE, bonus)
 
-@dp.message_handler(lambda m: m.text == "🏱 Бонус")
+@dp.message_handler(lambda m: m.text == "🎁 Бонус")
 async def bonus_handler(message: types.Message):
     user_id = str(message.from_user.id)
     bonus = load_json(BONUS_FILE)
