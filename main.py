@@ -1,3 +1,8 @@
+from zipfile import ZipFile
+import os
+
+# Дұрыс main.py коды (тройной кавычка жабылған)
+main_py_code = """
 import json
 import os
 import logging
@@ -144,16 +149,34 @@ async def handle_all(message: types.Message):
         videos["all"].append(message.video.file_id)
         save_json(KIDS_VIDEOS_FILE, videos)
         await message.answer("Видео сақталды.")
+
+if __name__ == '__main__':
+    from aiogram import executor
+    executor.start_polling(dp, skip_updates=True)
 """
 
-# Файлдарды дайындау
-os.makedirs("/mnt/data/bot", exist_ok=True)
-with open("/mnt/data/bot/main.py", "w") as f:
+# Қапшық дайындау
+bot_dir = "/mnt/data/bot"
+os.makedirs(bot_dir, exist_ok=True)
+
+# Python файл жазу
+main_py_path = os.path.join(bot_dir, "main.py")
+with open(main_py_path, "w") as f:
     f.write(main_py_code.strip())
 
-# Жинау
+# Бос JSON файлдар жазу
+for json_name in ["users.json", "bonus.json", "kids_videos.json"]:
+    with open(os.path.join(bot_dir, json_name), "w") as f:
+        if json_name == "kids_videos.json":
+            json.dump({"all": []}, f)
+        else:
+            json.dump({}, f)
+
+# Zip архив жасау
 zip_path = "/mnt/data/bonus_bot.zip"
 with ZipFile(zip_path, "w") as zipf:
-    zipf.write("/mnt/data/bot/main.py", arcname="main.py")
+    for filename in os.listdir(bot_dir):
+        full_path = os.path.join(bot_dir, filename)
+        zipf.write(full_path, arcname=filename)
 
 zip_path
