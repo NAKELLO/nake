@@ -4,7 +4,7 @@ import logging
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'  # ← Мұнда нақты токеніңізді қойыңыз
+API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'  # ← осында токенді жазыңыз
 ADMIN_ID = 7047272652
 BOT_USERNAME = 'Darvinuyatszdaribot'
 CHANNELS = ['@Qazhuboyndar', '@oqigalaruyatsiz']
@@ -91,6 +91,9 @@ async def kids_handler(message: types.Message):
     if not kids_videos:
         await message.answer("⚠️ Видео қоры бос.")
         return
+
+    if user_id not in users:
+        users[user_id] = {"kids": 0, "invited": []}
 
     if message.from_user.id != ADMIN_ID and bonus.get(user_id, 0) < 6:
         await message.answer("❌ Бұл бөлімді көру үшін 6 бонус қажет.")
