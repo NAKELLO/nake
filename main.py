@@ -5,7 +5,7 @@ from aiogram.utils.deep_linking import get_start_link
 from database import *  # <-- Базаны қосуды ұмытпа!
 import os
 
-API_TOKEN = 'ТВОЙ_ТОКЕН'  # <-- Осында өз токеніңді қой!
+API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'  # <-- Осында өз токеніңді қой!
 ADMIN_IDS = [7047272652, 6927494520]
 CHANNELS = ['@Qazhuboyndar', '@oqigalaruyatsiz']
 
