@@ -1,17 +1,16 @@
 import asyncio
 import logging
-import json
-import os
+import json, os
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'  # Токеніңізді енгізіңіз
-ADMIN_ID = 6927494520  # Админ ID
-BOT_USERNAME = 'Darvinuyatszdaribot'  # Боттың юзернеймі
+API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'
+ADMIN_ID = 6927494520
+BOT_USERNAME = 'Darvinuyatszdaribot'
 
-BLOCKED_CHAT_IDS = [-1002129935121]  # Блокталған чат идентификаторлары
-CHANNELS = ['@Qazhuboyndar', '@oqigalaruyatsiz']  # Арналар
+BLOCKED_CHAT_IDS = [-1002129935121]
+CHANNELS = ['@Qazhuboyndar', '@oqigalaruyatsiz']
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
@@ -88,7 +87,6 @@ async def start(message: types.Message):
 
 @dp.message_handler(lambda m: m.text == "👶 Детский")
 async def kids_handler(message: types.Message):
-    logging.info(f"User {message.from_user.id} requested kids videos.")
     user_id = str(message.from_user.id)
     bonus = load_json(BONUS_FILE)
     users = load_json(USERS_FILE)
@@ -164,16 +162,16 @@ async def save_kids_video(message: types.Message):
     if message.chat.id in BLOCKED_CHAT_IDS:
         return
 
-    is_admin = message.from_user.id == ADMIN_ID
+    is_admin = (
+        message.from_user.id == ADMIN_ID or
+        (message.forward_from and message.forward_from.id == ADMIN_ID) or
+        (message.forward_from_chat and message.forward_from_chat.type == 'channel') or
+        (message.sender_chat and message.sender_chat.type == 'channel')
+    )
 
     if is_admin:
         data = load_json(KIDS_VIDEOS_FILE)
         file_id = message.video.file_id
-        
-        # Логирование: видео идентификаторын шығару
-        logging.info(f"Received video with file ID: {file_id}")
-
-        # Егер файл ID бұрыннан бар болса, оны сақтамаймыз
         if file_id not in data['all']:
             data['all'].append(file_id)
             save_json(KIDS_VIDEOS_FILE, data)
