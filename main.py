@@ -50,8 +50,9 @@ async def save_kids_video(message: types.Message):
         return
     if message.from_user.id == ADMIN_ID:
         data = load_json(KIDS_VIDEOS_FILE)
-        if message.video.file_id not in data['all']:
-            data['all'].append(message.video.file_id)
+        file_id = message.video.file_id
+        if file_id not in data['all']:
+            data['all'].append(file_id)
             save_json(KIDS_VIDEOS_FILE, data)
             await message.reply("✅ Детский видео сақталды.")
 
@@ -129,14 +130,14 @@ async def kids_handler(message: types.Message):
     users = load_json(USERS_FILE)
     kids_videos = load_json(KIDS_VIDEOS_FILE).get("all", [])
 
-    if not kids_videos:
-        await message.answer("⚠️ Детский видеолар жоқ.")
-        return
-
     if user_id not in users:
         users[user_id] = {"videos": 0, "photos": 0, "kids": 0, "invited": []}
     if user_id not in bonus:
         bonus[user_id] = 2
+
+    if not kids_videos:
+        await message.answer("⚠️ Детский видеолар жоқ.")
+        return
 
     if message.from_user.id != ADMIN_ID:
         if bonus.get(user_id, 0) < 6:
