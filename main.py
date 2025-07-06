@@ -23,7 +23,6 @@ KIDS_VIDEOS_FILE = 'kids_videos.json'
 
 admin_waiting_broadcast = {}
 
-# -------- JSON helpers --------
 def load_json(file):
     if not os.path.exists(file):
         return {"all": []} if 'videos' in file or 'photos' in file else {}
@@ -34,7 +33,6 @@ def save_json(file, data):
     with open(file, 'w') as f:
         json.dump(data, f, indent=2)
 
-# -------- Subscription check --------
 async def check_subscription(user_id):
     for channel in CHANNELS:
         try:
@@ -44,8 +42,6 @@ async def check_subscription(user_id):
         except:
             return False
     return True
-
-# -------- Message Handlers --------
 
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
@@ -59,8 +55,8 @@ async def start(message: types.Message):
     if user_id not in users:
         is_subscribed = await check_subscription(message.from_user.id)
         if not is_subscribed:
-            links = "\n".join([f"👉 {c}" for c in CHANNELS])
-            await message.answer(f"📛 Ботты қолдану үшін келесі арналарға тіркеліңіз:\n\n{links}\n\n✅ Тіркелген соң /start деп қайта жазыңыз.")
+            links = "\n".join([f"\uD83D\uDC49 {c}" for c in CHANNELS])
+            await message.answer(f"\uD83D\uDEDB Ботты қолдану үшін келесі арналарға тіркеліңіз:\n\n{links}\n\n✅ Тіркелген соң /start деп қайта жазыңыз.")
             return
 
         users[user_id] = {"videos": 0, "photos": 0, "kids": 0, "invited": []}
@@ -82,7 +78,7 @@ async def start(message: types.Message):
         save_json(BONUS_FILE, bonus)
 
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add(KeyboardButton("👶 Детский"), KeyboardButton("🎁 Бонус"))
+    kb.add(KeyboardButton("👶 Детский"), KeyboardButton("🏱 Бонус"))
     kb.add(KeyboardButton("💎 VIP қолжетімділік"))
     if message.from_user.id == ADMIN_ID:
         kb.add(KeyboardButton("📢 Хабарлама жіберу"), KeyboardButton("👥 Қолданушылар саны"))
@@ -144,7 +140,7 @@ async def kids_handler(message: types.Message):
     save_json(USERS_FILE, users)
     save_json(BONUS_FILE, bonus)
 
-@dp.message_handler(lambda m: m.text == "🎁 Бонус")
+@dp.message_handler(lambda m: m.text == "🏱 Бонус")
 async def bonus_handler(message: types.Message):
     user_id = str(message.from_user.id)
     bonus = load_json(BONUS_FILE)
@@ -152,4 +148,54 @@ async def bonus_handler(message: types.Message):
     if user_id not in bonus:
         bonus[user_id] = 2
     if user_id not in users:
-        users[user_id] = {"videos": 0, "photos": 0, "
+        users[user_id] = {"videos": 0, "photos": 0, "kids": 0, "invited": []}
+    ref = f"https://t.me/{BOT_USERNAME}?start={user_id}"
+    save_json(BONUS_FILE, bonus)
+    save_json(USERS_FILE, users)
+    await message.answer(f"🎁 Сізде {bonus.get(user_id, 0)} бонус бар.\n🔗 Сілтеме: {ref}\n👥 Шақырғандар саны: {len(users[user_id]['invited'])}")
+
+@dp.message_handler(lambda m: m.text == "💎 VIP қолжетімділік")
+async def vip_access(message: types.Message):
+    await message.answer("""
+💎 VIP Қолжетімділік:
+
+📦 50 бонус — 2000 тг
+📦 100 бонус — 3500 тг
+⏳ 1 айлық тегін көру — 6000 тг
+
+📩 Сатып алу үшін: @KazHubALU хабарласыңыз
+""")
+
+@dp.message_handler(lambda m: m.text == "📢 Хабарлама жіберу")
+async def ask_broadcast(message: types.Message):
+    if message.from_user.id == ADMIN_ID:
+        admin_waiting_broadcast[message.from_user.id] = True
+        await message.answer("✍️ Хабарлама мәтінін жазыңыз:")
+
+@dp.message_handler(lambda m: m.text == "👥 Қолданушылар саны")
+async def user_count(message: types.Message):
+    if message.from_user.id == ADMIN_ID:
+        users = load_json(USERS_FILE)
+        await message.answer(f"👥 Қолданушылар саны: {len(users)}")
+
+@dp.message_handler()
+async def broadcast_or_unknown(message: types.Message):
+    user_id = message.from_user.id
+    if user_id == ADMIN_ID and admin_waiting_broadcast.get(user_id):
+        admin_waiting_broadcast.pop(user_id)
+        users = load_json(USERS_FILE)
+        count = 0
+        for uid in users:
+            try:
+                await bot.send_message(uid, message.text)
+                count += 1
+            except:
+                continue
+        await message.answer(f"📨 Хабарлама {count} адамға жіберілді.")
+    else:
+        await message.answer("🤖 Тек батырмаларды қолданыңыз.")
+
+if __name__ == '__main__':
+    print("🤖 Бот іске қосылды!")
+    from aiogram import executor
+    executor.start_polling(dp, skip_updates=True)
