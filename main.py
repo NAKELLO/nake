@@ -1,5 +1,3 @@
-# Дұрыс жұмыс істейтін, толық Telegram бот коды
-corrected_clean = """
 import json
 import os
 import logging
