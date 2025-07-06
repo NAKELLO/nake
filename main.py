@@ -5,7 +5,7 @@ import json, os
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-API_TOKEN = 'YOUR_API_TOKEN'
+API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'
 ADMIN_ID = 6927494520
 BOT_USERNAME = 'YOUR_BOT_USERNAME'
 
