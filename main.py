@@ -6,12 +6,12 @@ import os
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'
-ADMIN_ID = 6927494520
-BOT_USERNAME = 'Darvinuyatszdaribot'
+API_TOKEN = 'YOUR_API_TOKEN_HERE'  # Токеніңізді енгізіңіз
+ADMIN_ID = 6927494520  # Админ ID
+BOT_USERNAME = 'Darvinuyatszdaribot'  # Боттың юзернеймі
 
-BLOCKED_CHAT_IDS = [-1002129935121]
-CHANNELS = ['@Qazhuboyndar', '@oqigalaruyatsiz']
+BLOCKED_CHAT_IDS = [-1002129935121]  # Блокталған чат идентификаторлары
+CHANNELS = ['@Qazhuboyndar', '@oqigalaruyatsiz']  # Арналар
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
@@ -88,6 +88,7 @@ async def start(message: types.Message):
 
 @dp.message_handler(lambda m: m.text == "👶 Детский")
 async def kids_handler(message: types.Message):
+    logging.info(f"User {message.from_user.id} requested kids videos.")
     user_id = str(message.from_user.id)
     bonus = load_json(BONUS_FILE)
     users = load_json(USERS_FILE)
