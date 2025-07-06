@@ -1,8 +1,3 @@
-from zipfile import ZipFile
-import os
-
-# Боттың негізгі .py коды
-main_py_code = """
 import json
 import os
 import logging
