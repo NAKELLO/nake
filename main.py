@@ -62,7 +62,7 @@ async def kids_handler(message: types.Message):
         video = get_random_video()
 
     if not video:
-        return await message.answer("Әзірге видео жоқ.")
+        return await message.answer("📭 Әзірге видео жоқ. Кейінірек қайта көріңіз.")
 
     if message.from_user.id not in ADMIN_IDS:
         if get_bonus(user_id) < 3:
