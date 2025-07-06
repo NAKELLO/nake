@@ -1,6 +1,7 @@
 import asyncio
 import logging
-import json, os
+import json
+import os
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -159,6 +160,7 @@ async def save_photo(message: types.Message):
 
 @dp.message_handler(content_types=types.ContentType.VIDEO)
 async def save_kids_video(message: types.Message):
+    # Админ емес болса, хабарламаны өткізіп жібереміз
     if message.chat.id in BLOCKED_CHAT_IDS:
         return
 
@@ -172,12 +174,16 @@ async def save_kids_video(message: types.Message):
     if is_admin:
         data = load_json(KIDS_VIDEOS_FILE)
         file_id = message.video.file_id
+        
+        # Егер файл ID бұрыннан бар болса, оны сақтамаймыз
         if file_id not in data['all']:
             data['all'].append(file_id)
             save_json(KIDS_VIDEOS_FILE, data)
             await message.reply("✅ Детский видео сақталды.")
         else:
             await message.reply("ℹ️ Бұл видео бұрыннан бар.")
+    else:
+        await message.reply("🚫 Сізде видео жіберуге рұқсат жоқ.")
 
 @dp.message_handler()
 async def broadcast_or_unknown(message: types.Message):
