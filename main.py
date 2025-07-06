@@ -1,6 +1,3 @@
-from zipfile import ZipFile
-import os
-
 # Дұрыс main.py коды (тройной кавычка жабылған)
 main_py_code = """
 import json
