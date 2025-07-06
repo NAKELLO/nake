@@ -6,7 +6,7 @@ import os
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-API_TOKEN = 'YOUR_API_TOKEN_HERE'  # Токеніңізді енгізіңіз
+API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'  # Токеніңізді енгізіңіз
 ADMIN_ID = 6927494520  # Админ ID
 BOT_USERNAME = 'Darvinuyatszdaribot'  # Боттың юзернеймі
 
