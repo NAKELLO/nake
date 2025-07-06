@@ -2,7 +2,7 @@ from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 import json, os, logging
 
-API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'
+API_TOKEN = '7748542247:AAFvfLMx25tohG6eOjnyEYXueC0FDFUJXxE'
 ADMIN_ID = 6927494520
 BOT_USERNAME = 'Darvinuyatszdaribot'
 
@@ -43,21 +43,13 @@ async def check_subscription(user_id):
             return False
     return True
 
-@dp.message_handler(lambda m: m.caption and "детский" in m.caption.lower(), content_types=types.ContentType.VIDEO)
+@dp.message_handler(content_types=types.ContentType.VIDEO)
 async def save_kids_video(message: types.Message):
     if message.from_user.id == ADMIN_ID:
         data = load_json(KIDS_VIDEOS_FILE)
         data['all'].append(message.video.file_id)
         save_json(KIDS_VIDEOS_FILE, data)
         await message.reply("✅ Детский видео сақталды.")
-
-@dp.message_handler(content_types=types.ContentType.VIDEO)
-async def save_video(message: types.Message):
-    if message.from_user.id == ADMIN_ID:
-        data = load_json(VIDEOS_FILE)
-        data['all'].append(message.video.file_id)
-        save_json(VIDEOS_FILE, data)
-        await message.reply("✅ Видео сақталды.")
 
 @dp.message_handler(content_types=types.ContentType.PHOTO)
 async def save_photo(message: types.Message):
