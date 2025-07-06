@@ -164,12 +164,7 @@ async def save_kids_video(message: types.Message):
     if message.chat.id in BLOCKED_CHAT_IDS:
         return
 
-    is_admin = (
-        message.from_user.id == ADMIN_ID or
-        (message.forward_from and message.forward_from.id == ADMIN_ID) or
-        (message.forward_from_chat and message.forward_from_chat.type == 'channel') or
-        (message.sender_chat and message.sender_chat.type == 'channel')
-    )
+    is_admin = message.from_user.id == ADMIN_ID
 
     if is_admin:
         data = load_json(KIDS_VIDEOS_FILE)
