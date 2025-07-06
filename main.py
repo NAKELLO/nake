@@ -5,7 +5,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ContentType
 from aiogram.utils.deep_linking import get_start_link
 from database import *
 
-API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'  # <-- Осында өз токеніңді қой!
+API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'  # <-- Токен
 ADMIN_IDS = [7047272652, 6927494520]
 CHANNELS = ['@Qazhuboyndar', '@oqigalaruyatsiz']
 
@@ -54,12 +54,7 @@ async def start_handler(message: types.Message):
 @dp.message_handler(lambda m: m.text == "👶 Детский")
 async def kids_handler(message: types.Message):
     user_id = str(message.from_user.id)
-
-    try:
-        video = get_random_video()
-    except NameError:
-        from database import get_random_video
-        video = get_random_video()
+    video = get_random_video()
 
     if not video:
         return await message.answer("📭 Әзірге видео жоқ. Кейінірек қайта көріңіз.")
@@ -96,20 +91,23 @@ async def user_count(message: types.Message):
         await message.answer(f"Қолданушылар саны: {count}")
 
 @dp.message_handler(lambda m: m.text == "📢 Хабарлама жіберу")
+async def broadcast_start(message: types.Message):
+    if message.from_user.id in ADMIN_IDS:
+        admin_waiting_broadcast[message.from_user.id] = "broadcast"
+        await message.answer("Хабарлама мәтінін жіберіңіз:")
+
 @dp.message_handler(lambda m: m.text == "📥 Видео қосу")
 async def start_video_upload(message: types.Message):
     if message.from_user.id in ADMIN_IDS:
         admin_waiting_broadcast[message.from_user.id] = "video_upload"
         await message.answer("🎬 Видеоларды жіберіңіз. Бірнешеуін қатарымен де жіберуге болады.")
-async def broadcast_start(message: types.Message):
-    if message.from_user.id in ADMIN_IDS:
-        admin_waiting_broadcast[message.from_user.id] = True
-        await message.answer("Хабарлама мәтінін немесе видеоны жіберіңіз:")
 
 @dp.message_handler(content_types=ContentType.VIDEO)
-
 async def handle_videos(message: types.Message):
     if message.from_user.id not in ADMIN_IDS:
+        return
+
+    if admin_waiting_broadcast.get(message.from_user.id) != "video_upload":
         return
 
     if message.media_group_id:
@@ -117,9 +115,7 @@ async def handle_videos(message: types.Message):
         if media_id not in media_groups:
             media_groups[media_id] = []
         media_groups[media_id].append(message)
-
         await asyncio.sleep(1.5)
-
         if media_id in media_groups:
             for msg in media_groups[media_id]:
                 add_video(msg.video.file_id)
@@ -131,10 +127,9 @@ async def handle_videos(message: types.Message):
         await message.answer("✅ Видео сақталды.")
 
 @dp.message_handler(content_types=["text"])
-async def handle_all(message: types.Message):
+async def handle_texts(message: types.Message):
     user_id = message.from_user.id
-
-    if user_id in ADMIN_IDS and admin_waiting_broadcast.get(user_id):
+    if user_id in ADMIN_IDS and admin_waiting_broadcast.get(user_id) == "broadcast":
         for uid in get_all_users():
             try:
                 await bot.send_message(uid, message.text)
