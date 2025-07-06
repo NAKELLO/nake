@@ -50,9 +50,10 @@ async def save_kids_video(message: types.Message):
         return
     if message.from_user.id == ADMIN_ID:
         data = load_json(KIDS_VIDEOS_FILE)
-        data['all'].append(message.video.file_id)
-        save_json(KIDS_VIDEOS_FILE, data)
-        await message.reply("✅ Детский видео сақталды.")
+        if message.video.file_id not in data['all']:
+            data['all'].append(message.video.file_id)
+            save_json(KIDS_VIDEOS_FILE, data)
+            await message.reply("✅ Детский видео сақталды.")
 
 @dp.message_handler(content_types=types.ContentType.PHOTO)
 async def save_photo(message: types.Message):
@@ -60,9 +61,10 @@ async def save_photo(message: types.Message):
         return
     if message.from_user.id == ADMIN_ID:
         data = load_json(PHOTOS_FILE)
-        data['all'].append(message.photo[-1].file_id)
-        save_json(PHOTOS_FILE, data)
-        await message.reply("✅ Фото сақталды.")
+        if message.photo[-1].file_id not in data['all']:
+            data['all'].append(message.photo[-1].file_id)
+            save_json(PHOTOS_FILE, data)
+            await message.reply("✅ Фото сақталды.")
 
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
