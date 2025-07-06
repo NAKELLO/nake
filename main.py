@@ -1,32 +1,29 @@
-import asyncio
-import logging
 import json
 import os
-
-from aiogram import Bot, Dispatcher, types
+import logging
+from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'  # Токеніңізді енгізіңіз
-ADMIN_ID = 6927494520  # Админ ID
-BOT_USERNAME = 'Darvinuyatszdaribot'  # Боттың юзернеймі
+API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'  # ← Токенді осында қойыңыз
+ADMIN_ID = 7047272652
+BOT_USERNAME = 'Darvinuyatszdaribot'
 
-BLOCKED_CHAT_IDS = [-1002129935121]  # Блокталған чат идентификаторлары
-CHANNELS = ['@Qazhuboyndar', '@oqigalaruyatsiz']  # Арналар
+BLOCKED_CHAT_IDS = [-1002129935121]
+CHANNELS = ['@Qazhuboyndar', '@oqigalaruyatsiz']
 
-logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
+logging.basicConfig(level=logging.INFO)
 
 USERS_FILE = 'users.json'
 BONUS_FILE = 'bonus.json'
-PHOTOS_FILE = 'photos.json'
 KIDS_VIDEOS_FILE = 'kids_videos.json'
 
 admin_waiting_broadcast = {}
 
 def load_json(file):
     if not os.path.exists(file):
-        return {"all": []} if 'videos' in file or 'photos' in file else {}
+        return {"all": []} if 'videos' in file else {}
     with open(file, 'r') as f:
         return json.load(f)
 
@@ -40,8 +37,7 @@ async def check_subscription(user_id):
             member = await bot.get_chat_member(channel, user_id)
             if member.status not in ["member", "administrator", "creator"]:
                 return False
-        except Exception as e:
-            logging.error(f"Error checking subscription: {e}")
+        except:
             return False
     return True
 
@@ -55,13 +51,12 @@ async def start(message: types.Message):
     bonus = load_json(BONUS_FILE)
 
     if user_id not in users:
-        is_subscribed = await check_subscription(message.from_user.id)
-        if not is_subscribed:
+        if not await check_subscription(message.from_user.id):
             links = "\n".join([f"👉 {c}" for c in CHANNELS])
             await message.answer(f"📛 Ботты қолдану үшін келесі арналарға тіркеліңіз:\n\n{links}\n\n✅ Тіркелген соң /start деп қайта жазыңыз.")
             return
 
-        users[user_id] = {"videos": 0, "photos": 0, "kids": 0, "invited": []}
+        users[user_id] = {"kids": 0, "invited": []}
         if user_id != str(ADMIN_ID):
             bonus[user_id] = 2
 
@@ -73,8 +68,8 @@ async def start(message: types.Message):
                     bonus[ref_id] += 2
                     try:
                         await bot.send_message(int(ref_id), "🎉 Сізге 2 бонус қосылды!")
-                    except Exception as e:
-                        logging.error(f"Error sending bonus notification: {e}")
+                    except:
+                        pass
 
         save_json(USERS_FILE, users)
         save_json(BONUS_FILE, bonus)
@@ -84,7 +79,6 @@ async def start(message: types.Message):
     kb.add(KeyboardButton("💎 VIP қолжетімділік"))
     if message.from_user.id == ADMIN_ID:
         kb.row(KeyboardButton("📢 Хабарлама жіберу"), KeyboardButton("👥 Қолданушылар саны"))
-
     await message.answer("Қош келдіңіз!", reply_markup=kb)
 
 @dp.message_handler(lambda m: m.text == "👶 Детский")
@@ -95,7 +89,7 @@ async def kids_handler(message: types.Message):
     kids_videos = load_json(KIDS_VIDEOS_FILE).get("all", [])
 
     if not kids_videos:
-        await message.answer("⚠️ Детский видеолар жоқ.")
+        await message.answer("⚠️ Видео қоры бос.")
         return
 
     if message.from_user.id != ADMIN_ID and bonus.get(user_id, 0) < 6:
@@ -110,7 +104,7 @@ async def kids_handler(message: types.Message):
     save_json(USERS_FILE, users)
     save_json(BONUS_FILE, bonus)
 
-@dp.message_handler(lambda m: m.text and m.text.startswith("🎁"))
+@dp.message_handler(lambda m: m.text == "🎁 Бонус")
 async def bonus_handler(message: types.Message):
     user_id = str(message.from_user.id)
     bonus = load_json(BONUS_FILE)
@@ -118,93 +112,75 @@ async def bonus_handler(message: types.Message):
     if user_id not in bonus:
         bonus[user_id] = 2
     if user_id not in users:
-        users[user_id] = {"videos": 0, "photos": 0, "kids": 0, "invited": []}
+        users[user_id] = {"kids": 0, "invited": []}
     ref = f"https://t.me/{BOT_USERNAME}?start={user_id}"
     save_json(BONUS_FILE, bonus)
     save_json(USERS_FILE, users)
     await message.answer(f"🎁 Сізде {bonus.get(user_id, 0)} бонус бар.\n🔗 Сілтеме: {ref}\n👥 Шақырғандар саны: {len(users[user_id]['invited'])}")
 
-@dp.message_handler(lambda m: m.text and m.text.startswith("💎"))
+@dp.message_handler(lambda m: m.text == "💎 VIP қолжетімділік")
 async def vip_access(message: types.Message):
-    await message.answer("""
-💎 VIP Қолжетімділік:
+    await message.answer("""💎 VIP Қолжетімділік:
 
 📦 50 бонус — 2000 тг
 📦 100 бонус — 3500 тг
-⏳ 1 айлық тегін көру — 6000 тг
+⏳ 1 айлық шексіз көру — 6000 тг
 
-📩 Сатып алу үшін: @KazHubALU хабарласыңыз
-""")
+📩 Сатып алу үшін: @KazHubALU хабарласыңыз""")
 
-@dp.message_handler(lambda m: m.text and m.text.startswith("📢"))
+@dp.message_handler(lambda m: m.text == "📢 Хабарлама жіберу")
 async def ask_broadcast(message: types.Message):
     if message.from_user.id == ADMIN_ID:
         admin_waiting_broadcast[message.from_user.id] = True
         await message.answer("✍️ Хабарлама мәтінін жазыңыз:")
 
-@dp.message_handler(lambda m: m.text and m.text.startswith("👥"))
+@dp.message_handler(lambda m: m.text == "👥 Қолданушылар саны")
 async def user_count(message: types.Message):
     if message.from_user.id == ADMIN_ID:
         users = load_json(USERS_FILE)
         await message.answer(f"👥 Қолданушылар саны: {len(users)}")
-
-@dp.message_handler(content_types=types.ContentType.PHOTO)
-async def save_photo(message: types.Message):
-    if message.chat.id in BLOCKED_CHAT_IDS or message.from_user.id != ADMIN_ID:
-        return
-    data = load_json(PHOTOS_FILE)
-    file_id = message.photo[-1].file_id
-    if file_id not in data['all']:
-        data['all'].append(file_id)
-        save_json(PHOTOS_FILE, data)
-        await message.reply("✅ Фото сақталды.")
 
 @dp.message_handler(content_types=types.ContentType.VIDEO)
 async def save_kids_video(message: types.Message):
     if message.chat.id in BLOCKED_CHAT_IDS:
         return
 
-    is_admin = message.from_user.id == ADMIN_ID
+    is_admin = (
+        message.from_user.id == ADMIN_ID or
+        (message.forward_from and message.forward_from.id == ADMIN_ID) or
+        (message.forward_from_chat and message.forward_from_chat.type == 'channel') or
+        (message.sender_chat and message.sender_chat.type == 'channel')
+    )
 
     if is_admin:
+        if not message.video:
+            await message.reply("⚠️ Видео табылмады.")
+            return
         data = load_json(KIDS_VIDEOS_FILE)
         file_id = message.video.file_id
-        
-        # Логирование: видео идентификаторын шығару
-        logging.info(f"Received video with file ID: {file_id}")
-
-        # Егер файл ID бұрыннан бар болса, оны сақтамаймыз
         if file_id not in data['all']:
             data['all'].append(file_id)
             save_json(KIDS_VIDEOS_FILE, data)
             await message.reply("✅ Детский видео сақталды.")
         else:
             await message.reply("ℹ️ Бұл видео бұрыннан бар.")
-    else:
-        await message.reply("🚫 Сізде видео жіберуге рұқсат жоқ.")
 
 @dp.message_handler()
-async def broadcast_or_unknown(message: types.Message):
-    user_id = message.from_user.id
-    if user_id == ADMIN_ID and admin_waiting_broadcast.get(user_id):
-        admin_waiting_broadcast.pop(user_id)
+async def unknown_handler(message: types.Message):
+    if message.from_user.id in admin_waiting_broadcast:
+        admin_waiting_broadcast.pop(message.from_user.id)
         users = load_json(USERS_FILE)
         count = 0
         for uid in users:
             try:
                 await bot.send_message(uid, message.text)
                 count += 1
-            except Exception as e:
-                logging.error(f"Error sending broadcast message: {e}")
+            except:
                 continue
         await message.answer(f"📨 Хабарлама {count} адамға жіберілді.")
     else:
         await message.answer("🤖 Тек батырмаларды қолданыңыз.")
 
 if __name__ == '__main__':
-    try:
-        print("🤖 Бот іске қосылды!")
-        from aiogram import executor
-        executor.start_polling(dp, skip_updates=True)
-    except Exception as e:
-        logging.error(f"Error starting the bot: {e}")
+    print("🤖 Бот іске қосылды!")
+    executor.start_polling(dp, skip_updates=True)
