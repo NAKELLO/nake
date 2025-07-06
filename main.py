@@ -36,7 +36,8 @@ async def check_subscription(user_id):
             member = await bot.get_chat_member(channel, user_id)
             if member.status not in ["member", "administrator", "creator"]:
                 return False
-        except:
+        except Exception as e:
+            logging.warning(f"Subscription check error: {e}")
             return False
     return True
 
@@ -51,8 +52,8 @@ async def start(message: types.Message):
 
     if user_id not in users:
         if not await check_subscription(message.from_user.id):
-            links = "\\n".join([f"👉 {c}" for c in CHANNELS])
-            await message.answer(f"📛 Ботты қолдану үшін келесі арналарға тіркеліңіз:\\n\\n{links}\\n\\n✅ Тіркелген соң /start деп қайта жазыңыз.")
+            links = "\n".join([f"👉 {c}" for c in CHANNELS])
+            await message.answer(f"📛 Ботты қолдану үшін келесі арналарға тіркеліңіз:\n\n{links}\n\n✅ Тіркелген соң /start деп қайта жазыңыз.")
             return
 
         users[user_id] = {"kids": 0, "invited": []}
@@ -67,8 +68,8 @@ async def start(message: types.Message):
                     bonus[ref_id] += 2
                     try:
                         await bot.send_message(int(ref_id), "🎉 Сізге 2 бонус қосылды!")
-                    except:
-                        pass
+                    except Exception as e:
+                        logging.warning(f"Referral bonus notification failed: {e}")
 
         save_json(USERS_FILE, users)
         save_json(BONUS_FILE, bonus)
@@ -137,5 +138,3 @@ if __name__ == '__main__':
     print("🤖 Бот іске қосылды!")
     logging.info("✅ Polling басталды...")
     executor.start_polling(dp, skip_updates=True)
-"""
-corrected_clean[:1500]
