@@ -103,6 +103,7 @@ async def start(message: types.Message):
 
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add(KeyboardButton("👶 Детский"), KeyboardButton("🎁 Бонус"))
+    kb.add(KeyboardButton("💎 VIP қолжетімділік"))
     if message.from_user.id == ADMIN_ID:
         kb.add(KeyboardButton("📢 Хабарлама жіберу"), KeyboardButton("👥 Қолданушылар саны"))
 
@@ -144,6 +145,18 @@ async def kids_handler(message: types.Message):
         bonus[user_id] -= 6
     save_json(USERS_FILE, users)
     save_json(BONUS_FILE, bonus)
+
+@dp.message_handler(lambda m: m.text == "💎 VIP қолжетімділік")
+async def vip_access(message: types.Message):
+    await message.answer(
+        "💎 VIP Қолжетімділік:
+
+📦 50 бонус — 2000 тг
+📦 100 бонус — 3500 тг
+⏳ 1 айлық тегін көру — 6000 тг
+
+📩 Сатып алу үшін: @KazHubALU хабарласыңыз"
+    )
 
 @dp.message_handler(lambda m: m.text == "👥 Қолданушылар саны")
 async def user_count(message: types.Message):
