@@ -1,30 +1,29 @@
 import asyncio
 import logging
-import json, os
-
+import json
+import os
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'
-ADMIN_ID = 6927494520
-BOT_USERNAME = 'YOUR_BOT_USERNAME'
+# Токен мен администратор идентификаторын енгізіңіз
+API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'  # Сіздің токеніңіз
+ADMIN_ID = 6927494520  # Сіздің Telegram идентификаторыңыз
 
-BLOCKED_CHAT_IDS = [-1002129935121]
-CHANNELS = ['@Qazhuboyndar', '@oqigalaruyatsiz']
-
+# Лог жазу конфигурациясы
 logging.basicConfig(level=logging.INFO)
+
+# Бот пен диспетчерді инициализациялау
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
-USERS_FILE = 'users.json'
-BONUS_FILE = 'bonus.json'
-PHOTOS_FILE = 'photos.json'
+# Файлдар
 KIDS_VIDEOS_FILE = 'kids_videos.json'
 
+# JSON файлдан деректерді жүктеу функциясы
 def load_json(file):
     try:
         if not os.path.exists(file):
-            return {"all": []} if 'videos' in file or 'photos' in file else {}
+            return {"all": []}
         with open(file, 'r') as f:
             return json.load(f)
     except json.JSONDecodeError:
@@ -34,15 +33,15 @@ def load_json(file):
         logging.error(f"Ошибка при загрузке файла {file}: {e}")
         return {}
 
+# JSON файлға деректерді сақтау функциясы
 def save_json(file, data):
     with open(file, 'w') as f:
         json.dump(data, f, indent=2)
 
+# Видео сақтайтын хэндлер
 @dp.message_handler(content_types=types.ContentType.VIDEO)
 async def save_kids_video(message: types.Message):
-    if message.chat.id in BLOCKED_CHAT_IDS:
-        return
-
+    # Администратор тексерісі
     is_admin = (
         message.from_user.id == ADMIN_ID or
         (message.forward_from and message.forward_from.id == ADMIN_ID) or
@@ -59,14 +58,15 @@ async def save_kids_video(message: types.Message):
             await message.reply("✅ Детский видео сақталды.")
         else:
             await message.reply("ℹ️ Бұл видео бұрыннан бар.")
+    else:
+        await message.reply("🚫 Сізде бұл әрекетті орындауға рұқсат жоқ.")
 
+# Боттың старт командасын өңдеу
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
-    # ... (қалған код)
-    pass
+    await message.reply("🤖 Бот іске қосылды! Сізге қалай көмектесе аламын?")
 
-# ... (басқа функциялар)
-
+# Ботты іске қосу
 if __name__ == '__main__':
     print("🤖 Бот іске қосылды!")
     from aiogram import executor
