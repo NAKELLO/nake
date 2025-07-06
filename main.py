@@ -79,16 +79,16 @@ async def kids_handler(message: types.Message):
     bonuses = load_json(BONUS_FILE)
     videos = load_json(KIDS_VIDEOS_FILE)
 
-    if bonuses.get(user_id, 0) < 3:
-        return await message.answer("❗ 3 бонус қажет. Бонус жинау үшін достарыңызды шақырыңыз.")
-
     if not videos["all"]:
         return await message.answer("Әзірге видео жоқ.")
 
-    video = videos["all"][0]
-    bonuses[user_id] -= 3
+    if message.from_user.id not in ADMIN_IDS:
+        if bonuses.get(user_id, 0) < 3:
+            return await message.answer("❗ 3 бонус қажет. Бонус жинау үшін достарыңызды шақырыңыз.")
+        bonuses[user_id] -= 3
+        save_json(BONUS_FILE, bonuses)
 
-    save_json(BONUS_FILE, bonuses)
+    video = videos["all"][0]
     await message.answer_video(video)
 
 @dp.message_handler(lambda m: m.text == "🎁 Бонус")
