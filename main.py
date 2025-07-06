@@ -2,11 +2,12 @@ from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 import json, os, logging
 
-API_TOKEN = '7748542247:AAFvfLMx25tohG6eOjnyEYXueC0FDFUJXxE'
+API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'
 ADMIN_ID = 6927494520
 BOT_USERNAME = 'Darvinuyatszdaribot'
 
-CHANNELS = ['@Gey_Angime', '@Qazhuboyndar', '@oqigalaruyatsiz']
+BLOCKED_CHAT_IDS = [-1002129935121]  # @Gey_Angime ID
+CHANNELS = ['@Qazhuboyndar', '@oqigalaruyatsiz']
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
@@ -45,6 +46,8 @@ async def check_subscription(user_id):
 
 @dp.message_handler(content_types=types.ContentType.VIDEO)
 async def save_kids_video(message: types.Message):
+    if message.chat.id in BLOCKED_CHAT_IDS:
+        return
     if message.from_user.id == ADMIN_ID:
         data = load_json(KIDS_VIDEOS_FILE)
         data['all'].append(message.video.file_id)
@@ -53,6 +56,8 @@ async def save_kids_video(message: types.Message):
 
 @dp.message_handler(content_types=types.ContentType.PHOTO)
 async def save_photo(message: types.Message):
+    if message.chat.id in BLOCKED_CHAT_IDS:
+        return
     if message.from_user.id == ADMIN_ID:
         data = load_json(PHOTOS_FILE)
         data['all'].append(message.photo[-1].file_id)
@@ -164,6 +169,9 @@ async def ask_broadcast(message: types.Message):
 
 @dp.message_handler()
 async def broadcast_or_unknown(message: types.Message):
+    if message.chat.id in BLOCKED_CHAT_IDS:
+        return
+
     user_id = message.from_user.id
     if user_id == ADMIN_ID and admin_waiting_broadcast.get(user_id):
         admin_waiting_broadcast.pop(user_id)
