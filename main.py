@@ -54,7 +54,13 @@ async def start_handler(message: types.Message):
 @dp.message_handler(lambda m: m.text == "👶 Детский")
 async def kids_handler(message: types.Message):
     user_id = str(message.from_user.id)
-    video = get_random_video()
+
+    try:
+        video = get_random_video()
+    except NameError:
+        from database import get_random_video
+        video = get_random_video()
+
     if not video:
         return await message.answer("Әзірге видео жоқ.")
 
