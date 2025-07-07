@@ -37,7 +37,6 @@ async def save_video_album_handler(message: types.Message):
         return
 
     media_group_id = message.media_group_id
-
     if media_group_id in processing_media_groups:
         return
 
@@ -69,7 +68,11 @@ async def save_video_album_handler(message: types.Message):
     save_json(KIDS_VIDEOS_FILE, kids_videos)
     await message.answer(f"✅ {saved_count} видео сақталды.")
 
+# --- webhook тазалау ---
+async def on_startup(dp):
+    await bot.delete_webhook(drop_pending_updates=True)
+    logging.info("🧹 Webhook тазаланды.")
+
 if __name__ == '__main__':
     print("🤖 Бот іске қосылды!")
-    logging.info("✅ Polling басталды...")
-    start_polling(dp, skip_updates=True)
+    start_polling(dp, skip_updates=True, on_startup=on_startup)
