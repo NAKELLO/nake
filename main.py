@@ -13,12 +13,12 @@ VIDEOS_FILE = "videos.json"
 videos = []
 state = {}
 
-# 📂 Файлдан жүктеу
+# 📂 Видео файлдан жүктеу
 if os.path.exists(VIDEOS_FILE):
     with open(VIDEOS_FILE, "r") as f:
         videos = json.load(f)
 
-# 💾 Файлға сақтау
+# 💾 Видео файлға сақтау
 def save_videos():
     with open(VIDEOS_FILE, "w") as f:
         json.dump(videos, f, indent=2)
@@ -34,7 +34,7 @@ async def video_upload(msg: types.Message):
     }
     await msg.reply("🎬 Видео атауын жазыңыз:")
 
-# 📝 Атауы
+# 📝 Видео атауын енгізу
 @dp.message_handler(lambda m: state.get(m.from_user.id, {}).get("step") == "title")
 async def video_title(msg: types.Message):
     state[msg.from_user.id]["title"] = msg.text
@@ -90,5 +90,6 @@ async def start_cmd(msg: types.Message):
     kb.add("👶 Детский", "🔞 Взрослый")
     await msg.reply("Категория таңда:", reply_markup=kb)
 
+# 🔁 Ботты іске қосу
 if name == "main":
     executor.start_polling(dp, skip_updates=True)
