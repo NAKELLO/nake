@@ -21,7 +21,6 @@ VIDEO_FOLDER = "saved_videos"
 if not os.path.exists(VIDEO_FOLDER):
     os.makedirs(VIDEO_FOLDER)
 
-# 📦 База инициализация
 def init_db():
     conn = sqlite3.connect("bot.db")
     c = conn.cursor()
@@ -39,7 +38,6 @@ def init_db():
     conn.commit()
     conn.close()
 
-# 👥 User logics
 def add_user(user_id, invited_by=None):
     conn = sqlite3.connect("bot.db")
     c = conn.cursor()
@@ -76,7 +74,6 @@ def add_video(file_id, video_type, file_path):
     conn.commit()
     conn.close()
 
-# 📥 Видеоны жіберу клавиатура
 def get_main_keyboard(user_id):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.row(KeyboardButton("🧒 Детский"), KeyboardButton("🔞 Взрослый"))
@@ -85,7 +82,6 @@ def get_main_keyboard(user_id):
         kb.row(KeyboardButton("📥 Видео қосу"))
     return kb
 
-# ✅ Жаңа user қосу
 @dp.message_handler(commands=['start'])
 async def start_cmd(message: types.Message):
     user_id = str(message.from_user.id)
@@ -96,12 +92,11 @@ async def start_cmd(message: types.Message):
         add_bonus(payload, 2)
 
     if not await check_subscription(message.from_user.id):
-        channels_list = "\n".join(CHANNELS)
-        return await message.answer(f"Ботты пайдалану үшін келесі каналдарға жазылыңыз:\n{channels_list}")
+        channels_list = "\\n".join(CHANNELS)
+        return await message.answer(f"Ботты пайдалану үшін келесі каналдарға жазылыңыз:\\n{channels_list}")
 
     await message.answer("Қош келдіңіз!", reply_markup=get_main_keyboard(message.from_user.id))
 
-# 🔒 Подписка тексеру
 async def check_subscription(user_id):
     for channel in CHANNELS:
         try:
@@ -112,7 +107,6 @@ async def check_subscription(user_id):
             return False
     return True
 
-# 🎥 Видео жіберу (балалар/ересектер)
 @dp.message_handler(lambda m: m.text in ["🧒 Детский", "🔞 Взрослый"])
 async def send_video(message: types.Message):
     user_id = str(message.from_user.id)
@@ -144,15 +138,13 @@ async def send_video(message: types.Message):
         except:
             await message.answer("⚠️ Видео жүктеу мүмкін емес.")
 
-# 💎 Баланс
 @dp.message_handler(lambda m: m.text == "💎 Баланс")
 async def show_balance(message: types.Message):
     user_id = str(message.from_user.id)
     bonus = get_bonus(user_id)
     ref_link = await get_start_link(str(user_id), encode=True)
-    await message.answer(f"Сізде {bonus} бонус бар.\nРеф. сілтеме: {ref_link}")
+    await message.answer(f"Сізде {bonus} бонус бар.\\nРеф. сілтеме: {ref_link}")
 
-# 📥 Видео қосу батырмасы
 @dp.message_handler(lambda m: m.text == "📥 Видео қосу")
 async def ask_video_type(message: types.Message):
     if message.from_user.id in ADMIN_IDS:
@@ -161,14 +153,12 @@ async def ask_video_type(message: types.Message):
         kb.add(InlineKeyboardButton("🔞 Взрослый", callback_data="upload_adult"))
         await message.answer("Қай бөлімге видео саласыз?", reply_markup=kb)
 
-# 👇 Админ тип таңдады
 @dp.callback_query_handler(lambda c: c.data.startswith("upload_"))
 async def set_upload_type(callback_query: types.CallbackQuery):
     video_type = callback_query.data.replace("upload_", "")
     admin_waiting_action[callback_query.from_user.id] = video_type
     await callback_query.message.answer("🎬 Видеоны жіберіңіз")
 
-# 💾 Видео сақтау — 100% кепілдік
 @dp.message_handler(content_types=ContentType.VIDEO)
 async def save_video(message: types.Message):
     if message.from_user.id not in ADMIN_IDS:
@@ -190,8 +180,22 @@ async def save_video(message: types.Message):
         print(f"[ERROR] Видео сақтау қатесі: {e}")
     admin_waiting_action.pop(message.from_user.id, None)
 
-# 🚀 Ботты қосу
-if name == 'main':
+if __name__ == '__main__':
     init_db()
     from aiogram import executor
     executor.start_polling(dp, skip_updates=True)
+"""
+
+# Файл жолын сақтау
+bot_path = "/mnt/data/main.py"
+
+# Кодты файлға жазу
+with open(bot_path, "w", encoding="utf-8") as f:
+    f.write(bot_code)
+
+# Zip жасау
+zip_path = "/mnt/data/telegram_bot_ready.zip"
+with ZipFile(zip_path, 'w') as zipf:
+    zipf.write(bot_path, arcname="main.py")
+
+zip_path
