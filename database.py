@@ -1,57 +1,53 @@
 import sqlite3
 
-DB_NAME = "bot.db"
-
 def init_db():
-    with sqlite3.connect(DB_NAME) as conn:
-        c = conn.cursor()
-        c.execute("CREATE TABLE IF NOT EXISTS users (user_id TEXT PRIMARY KEY, ref TEXT)")
-        c.execute("CREATE TABLE IF NOT EXISTS bonuses (user_id TEXT PRIMARY KEY, bonus INTEGER)")
-        c.execute("CREATE TABLE IF NOT EXISTS videos (id INTEGER PRIMARY KEY AUTOINCREMENT, file_id TEXT)")
-        conn.commit()
-
-def add_user(user_id, ref=None):
-    with sqlite3.connect(DB_NAME) as conn:
-        c = conn.cursor()
-        c.execute("INSERT OR IGNORE INTO users (user_id, ref) VALUES (?, ?)", (user_id, ref))
-        c.execute("INSERT OR IGNORE INTO bonuses (user_id, bonus) VALUES (?, ?)", (user_id, 2))
-        conn.commit()
-
-def add_bonus(user_id, amount):
-    with sqlite3.connect(DB_NAME) as conn:
-        c = conn.cursor()
-        c.execute("INSERT OR IGNORE INTO bonuses (user_id, bonus) VALUES (?, ?)", (user_id, 0))
-        c.execute("UPDATE bonuses SET bonus = bonus + ? WHERE user_id = ?", (amount, user_id))
-        conn.commit()
-
-def get_bonus(user_id):
-    with sqlite3.connect(DB_NAME) as conn:
-        c = conn.cursor()
-        c.execute("SELECT bonus FROM bonuses WHERE user_id = ?", (user_id,))
-        row = c.fetchone()
-        return row[0] if row else 0
-
-def decrease_bonus(user_id, amount):
-    with sqlite3.connect(DB_NAME) as conn:
-        c = conn.cursor()
-        c.execute("UPDATE bonuses SET bonus = bonus - ? WHERE user_id = ?", (amount, user_id))
-        conn.commit()
-
-def get_all_users():
-    with sqlite3.connect(DB_NAME) as conn:
-        c = conn.cursor()
-        c.execute("SELECT user_id FROM users")
-        return [row[0] for row in c.fetchall()]
+    conn = sqlite3.connect("bot.db")
+    cursor = conn.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS videos (id INTEGER PRIMARY KEY AUTOINCREMENT, file_id TEXT)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS users (user_id TEXT PRIMARY KEY, bonus INTEGER DEFAULT 2, ref TEXT)")
+    conn.commit()
+    conn.close()
 
 def add_video(file_id):
-    with sqlite3.connect(DB_NAME) as conn:
-        c = conn.cursor()
-        c.execute("INSERT INTO videos (file_id) VALUES (?)", (file_id,))
-        conn.commit()
+    conn = sqlite3.connect("bot.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO videos (file_id) VALUES (?)", (file_id,))
+    conn.commit()
+    conn.close()
 
-def get_first_video():
-    with sqlite3.connect(DB_NAME) as conn:
-        c = conn.cursor()
-        c.execute("SELECT file_id FROM videos ORDER BY id ASC LIMIT 1")
-        row = c.fetchone()
-        return row[0] if row else None
+def get_random_video():
+    conn = sqlite3.connect("bot.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT file_id FROM videos ORDER BY RANDOM() LIMIT 1")
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+def add_user(user_id, ref=None):
+    conn = sqlite3.connect("bot.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR IGNORE INTO users (user_id, ref) VALUES (?, ?)", (user_id, ref))
+    conn.commit()
+    conn.close()
+
+def get_bonus(user_id):
+    conn = sqlite3.connect("bot.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT bonus FROM users WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else 0
+
+def add_bonus(user_id, amount):
+    conn = sqlite3.connect("bot.db")
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET bonus = bonus + ? WHERE user_id = ?", (amount, user_id))
+    conn.commit()
+    conn.close()
+
+def decrease_bonus(user_id, amount):
+    conn = sqlite3.connect("bot.db")
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET bonus = bonus - ? WHERE user_id = ?", (amount, user_id))
+    conn.commit()
+    conn.close()
