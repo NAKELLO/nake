@@ -1,4 +1,6 @@
-import logging, json, os
+import logging
+import json
+import os
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -83,7 +85,7 @@ async def show_category(msg: types.Message):
     for v in found:
         await bot.send_video(msg.chat.id, v["file_id"], caption=f"{v['title']} — {v['cost']} бонус")
 
-# 📍 Start
+# 📍 /start командасы
 @dp.message_handler(commands=["start"])
 async def start_cmd(msg: types.Message):
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -91,5 +93,5 @@ async def start_cmd(msg: types.Message):
     await msg.reply("Категория таңда:", reply_markup=kb)
 
 # 🔁 Ботты іске қосу
-if name == "main":
+if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
