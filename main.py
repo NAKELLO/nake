@@ -1,9 +1,10 @@
 import logging
 import asyncio
+import sqlite3
+import random
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup, ContentType
 from aiogram.utils.deep_linking import get_start_link
-from database import *
 
 API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'
 ADMIN_IDS = [7047272652, 6927494520]
@@ -17,17 +18,71 @@ admin_waiting_action = {}
 admin_video_type = {}
 media_groups = {}
 
+def init_db():
+    conn = sqlite3.connect("bot.db")
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS users (
+        user_id TEXT PRIMARY KEY,
+        invited_by TEXT,
+        bonus INTEGER DEFAULT 2
+    )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS videos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        file_id TEXT,
+        type TEXT
+    )''')
+    conn.commit()
+    conn.close()
+
+def add_user(user_id, invited_by=None):
+    conn = sqlite3.connect("bot.db")
+    c = conn.cursor()
+    c.execute("INSERT OR IGNORE INTO users (user_id, invited_by) VALUES (?, ?)", (user_id, invited_by))
+    conn.commit()
+    conn.close()
+
+def add_bonus(user_id, amount):
+    conn = sqlite3.connect("bot.db")
+    c = conn.cursor()
+    c.execute("UPDATE users SET bonus = bonus + ? WHERE user_id = ?", (amount, user_id))
+    conn.commit()
+    conn.close()
+
+def get_bonus(user_id):
+    conn = sqlite3.connect("bot.db")
+    c = conn.cursor()
+    c.execute("SELECT bonus FROM users WHERE user_id = ?", (user_id,))
+    result = c.fetchone()
+    conn.close()
+    return result[0] if result else 0
+
+def decrease_bonus(user_id, amount):
+    conn = sqlite3.connect("bot.db")
+    c = conn.cursor()
+    c.execute("UPDATE users SET bonus = bonus - ? WHERE user_id = ?", (amount, user_id))
+    conn.commit()
+    conn.close()
+
+def add_video(file_id, video_type):
+    conn = sqlite3.connect("bot.db")
+    c = conn.cursor()
+    c.execute("INSERT INTO videos (file_id, type) VALUES (?, ?)", (file_id, video_type))
+    conn.commit()
+    conn.close()
+
+def get_random_video(video_type):
+    conn = sqlite3.connect("bot.db")
+    c = conn.cursor()
+    c.execute("SELECT file_id FROM videos WHERE type = ?", (video_type,))
+    results = c.fetchall()
+    conn.close()
+    return random.choice(results)[0] if results else None
+
 def get_main_keyboard(user_id):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.row(
-        KeyboardButton("🛍 Магазин")
-    )
-    kb.row(
-        KeyboardButton("🧒 Детский"), KeyboardButton("🔞 Взрослый")
-    )
-    kb.row(
-        KeyboardButton("💎 Заработать"), KeyboardButton("🌸 PREMIUM"), KeyboardButton("💎 Баланс")
-    )
+    kb.row(KeyboardButton("🛍 Магазин"))
+    kb.row(KeyboardButton("🧒 Детский"), KeyboardButton("🔞 Взрослый"))
+    kb.row(KeyboardButton("💎 Заработать"), KeyboardButton("🌸 PREMIUM"), KeyboardButton("💎 Баланс"))
     if user_id in ADMIN_IDS:
         kb.add(KeyboardButton("📥 Видео қосу"))
     return kb
@@ -117,7 +172,7 @@ async def start_video_upload(message: types.Message):
 @dp.callback_query_handler(lambda c: c.data.startswith("upload_"))
 async def handle_upload_callback(callback_query: types.CallbackQuery):
     video_type = callback_query.data.replace("upload_", "")
-    admin_waiting_action[callback_query.from_user.id] = "video_upload"
+    admin_waiting_action[callback_query.from_user.id] = True
     admin_video_type[callback_query.from_user.id] = video_type
     await callback_query.message.answer(f"🎬 {video_type.upper()} видеоларды жіберіңіз.")
 
@@ -126,7 +181,7 @@ async def handle_videos(message: types.Message):
     if message.from_user.id not in ADMIN_IDS:
         return
 
-    if admin_waiting_action.get(message.from_user.id) != "video_upload":
+    if not admin_waiting_action.get(message.from_user.id):
         return
 
     video_type = admin_video_type.get(message.from_user.id)
@@ -148,6 +203,9 @@ async def handle_videos(message: types.Message):
     else:
         add_video(message.video.file_id, video_type)
         await message.answer(f"✅ {video_type.upper()} видео сақталды.")
+
+    admin_waiting_action.pop(message.from_user.id, None)
+    admin_video_type.pop(message.from_user.id, None)
 
 if __name__ == '__main__':
     from aiogram import executor
