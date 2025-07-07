@@ -2,10 +2,10 @@ import logging, json, os
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-API_TOKEN = 'ТВОЙ_БОТ_ТОКЕН'
-ADMIN_ID = 6927494520  # Өз ID-ң
+API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'
+ADMIN_ID = 6927494520
 
-bot = Bot(7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4)
+bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 logging.basicConfig(level=logging.INFO)
 
@@ -83,7 +83,7 @@ async def show_category(msg: types.Message):
     for v in found:
         await bot.send_video(msg.chat.id, v["file_id"], caption=f"{v['title']} — {v['cost']} бонус")
 
-# 📍 Start (міндетті емес)
+# 📍 Start
 @dp.message_handler(commands=["start"])
 async def start_cmd(msg: types.Message):
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
