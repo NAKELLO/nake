@@ -86,7 +86,9 @@ def get_random_video(video_type):
 def get_main_keyboard(user_id):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.row(KeyboardButton("🧒 Детский"), KeyboardButton("🔞 Взрослый"))
-    kb.row(KeyboardButton("💎 Баланс"), KeyboardButton("📥 Видео қосу"))
+    kb.row(KeyboardButton("💎 Баланс"))
+    if user_id in ADMIN_IDS:
+        kb.row(KeyboardButton("📥 Видео қосу"))
     return kb
 
 @dp.message_handler(commands=['start'])
