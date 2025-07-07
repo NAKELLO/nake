@@ -5,6 +5,7 @@ import random
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup, ContentType
 from aiogram.utils.deep_linking import get_start_link
+import os
 
 API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'
 ADMIN_IDS = [7047272652, 6927494520]
@@ -17,6 +18,10 @@ logging.basicConfig(level=logging.INFO)
 admin_waiting_action = {}
 admin_video_type = {}
 media_groups = {}
+VIDEO_FOLDER = "saved_videos"
+
+if not os.path.exists(VIDEO_FOLDER):
+    os.makedirs(VIDEO_FOLDER)
 
 def init_db():
     conn = sqlite3.connect("bot.db")
@@ -29,7 +34,8 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS videos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         file_id TEXT,
-        type TEXT
+        type TEXT,
+        file_path TEXT
     )''')
     conn.commit()
     conn.close()
@@ -63,10 +69,10 @@ def decrease_bonus(user_id, amount):
     conn.commit()
     conn.close()
 
-def add_video(file_id, video_type):
+def add_video(file_id, video_type, file_path=None):
     conn = sqlite3.connect("bot.db")
     c = conn.cursor()
-    c.execute("INSERT INTO videos (file_id, type) VALUES (?, ?)", (file_id, video_type))
+    c.execute("INSERT INTO videos (file_id, type, file_path) VALUES (?, ?, ?)", (file_id, video_type, file_path))
     conn.commit()
     conn.close()
 
@@ -78,13 +84,21 @@ def get_random_video(video_type):
     conn.close()
     return random.choice(results)[0] if results else None
 
+def get_video_count():
+    conn = sqlite3.connect("bot.db")
+    c = conn.cursor()
+    c.execute("SELECT type, COUNT(*) FROM videos GROUP BY type")
+    results = c.fetchall()
+    conn.close()
+    return results
+
 def get_main_keyboard(user_id):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.row(KeyboardButton("🛍 Магазин"))
     kb.row(KeyboardButton("🧒 Детский"), KeyboardButton("🔞 Взрослый"))
     kb.row(KeyboardButton("💎 Заработать"), KeyboardButton("🌸 PREMIUM"), KeyboardButton("💎 Баланс"))
     if user_id in ADMIN_IDS:
-        kb.add(KeyboardButton("📥 Видео қосу"))
+        kb.add(KeyboardButton("📥 Видео қосу"), KeyboardButton("📊 Статистика"))
     return kb
 
 def get_upload_type_keyboard():
@@ -121,6 +135,16 @@ async def start_handler(message: types.Message):
         "Добро пожаловать. 👋\n\nПоздравляю, ты нашёл что искал так долго.",
         reply_markup=get_main_keyboard(message.from_user.id)
     )
+
+@dp.message_handler(lambda m: m.text == "📊 Статистика")
+async def stats_handler(message: types.Message):
+    if message.from_user.id not in ADMIN_IDS:
+        return
+    counts = get_video_count()
+    text = "📊 Видео статистикасы:\n"
+    for video_type, count in counts:
+        text += f"- {video_type.upper()}: {count} видео\n"
+    await message.answer(text)
 
 @dp.message_handler(lambda m: m.text in ["🧒 Детский", "🔞 Взрослый"])
 async def handle_video_type(message: types.Message):
@@ -188,21 +212,21 @@ async def handle_videos(message: types.Message):
     if not video_type:
         return
 
-    if message.media_group_id:
-        media_id = message.media_group_id
-        if media_id not in media_groups:
-            media_groups[media_id] = []
-        media_groups[media_id].append((message, video_type))
-        await asyncio.sleep(1.5)
-        if media_id in media_groups:
-            for msg, vtype in media_groups[media_id]:
-                add_video(msg.video.file_id, vtype)
-            count = len(media_groups[media_id])
-            del media_groups[media_id]
-            await message.answer(f"✅ {count} {video_type.upper()} видео сақталды.")
-    else:
-        add_video(message.video.file_id, video_type)
+    try:
+        file_id = message.video.file_id
+        file = await bot.get_file(file_id)
+        file_path = f"{VIDEO_FOLDER}/{file_id}.mp4"
+        await bot.download_file(file.file_path, file_path)
+        add_video(file_id, video_type, file_path)
         await message.answer(f"✅ {video_type.upper()} видео сақталды.")
+        await message.answer("🕒 Видео Telegram серверінде кем дегенде 2 апта сақталады.", parse_mode="Markdown")
+        for admin_id in ADMIN_IDS:
+            if admin_id != message.from_user.id:
+                await bot.send_message(admin_id, f"📦 {video_type.upper()} видеосы сақталды: {file_id}")
+    except Exception as e:
+        await message.answer("❌ Видео жүктелмей қалды. Қайталап көріңіз.")
+        for admin_id in ADMIN_IDS:
+            await bot.send_message(admin_id, f"⚠️ Видео сақтау кезінде қате болды: {str(e)}")
 
     admin_waiting_action.pop(message.from_user.id, None)
     admin_video_type.pop(message.from_user.id, None)
