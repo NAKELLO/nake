@@ -1,7 +1,7 @@
 import logging
 import asyncio
 from aiogram import Bot, Dispatcher, types
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ContentType
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup, ContentType
 from aiogram.utils.deep_linking import get_start_link
 from database import *
 
@@ -14,6 +14,7 @@ dp = Dispatcher(bot)
 logging.basicConfig(level=logging.INFO)
 
 admin_waiting_action = {}
+admin_video_type = {}
 media_groups = {}
 
 def get_main_keyboard(user_id):
@@ -26,6 +27,18 @@ def get_main_keyboard(user_id):
     )
     if user_id in ADMIN_IDS:
         kb.add(KeyboardButton("📥 Видео қосу"))
+    return kb
+
+def get_video_type_keyboard():
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton("🧒 Детский", callback_data="watch_kids"))
+    kb.add(InlineKeyboardButton("🔞 Взрослый", callback_data="watch_adult"))
+    return kb
+
+def get_upload_type_keyboard():
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton("🧒 Детский", callback_data="upload_kids"))
+    kb.add(InlineKeyboardButton("🔞 Взрослый", callback_data="upload_adult"))
     return kb
 
 async def check_subscription(user_id):
@@ -59,18 +72,23 @@ async def start_handler(message: types.Message):
 
 @dp.message_handler(lambda m: m.text == "▶️ Смотреть")
 async def watch_handler(message: types.Message):
-    user_id = str(message.from_user.id)
-    video = get_random_video()
+    await message.answer("Қай видеоны көргіңіз келеді?", reply_markup=get_video_type_keyboard())
+
+@dp.callback_query_handler(lambda c: c.data.startswith("watch_"))
+async def handle_watch_callback(callback_query: types.CallbackQuery):
+    user_id = str(callback_query.from_user.id)
+    video_type = callback_query.data.replace("watch_", "")
+    video = get_random_video(video_type)
 
     if not video:
-        return await message.answer("📭 Әзірге видео жоқ. Кейінірек қайта көріңіз.")
+        return await callback_query.message.answer("📭 Әзірге видео жоқ. Кейінірек қайта көріңіз.")
 
-    if message.from_user.id not in ADMIN_IDS:
+    if callback_query.from_user.id not in ADMIN_IDS:
         if get_bonus(user_id) < 3:
-            return await message.answer("❗ 3 бонус қажет. Достарыңызды шақырыңыз.")
+            return await callback_query.message.answer("❗ 3 бонус қажет. Достарыңызды шақырыңыз.")
         decrease_bonus(user_id, 3)
 
-    await message.answer_video(video)
+    await callback_query.message.answer_video(video)
 
 @dp.message_handler(lambda m: m.text == "💎 Баланс")
 async def balance_handler(message: types.Message):
@@ -96,7 +114,7 @@ async def premium_handler(message: types.Message):
 
 @dp.message_handler(lambda m: m.text == "🔥 Жанр")
 async def genre_handler(message: types.Message):
-    await message.answer("🔖 Бұл бөлім әзірге дайын емес. Кешіріңіз.")
+    await message.answer("🔖 Жанр таңдаңыз:", reply_markup=get_video_type_keyboard())
 
 @dp.message_handler(lambda m: m.text == "🛍 Магазин")
 async def shop_handler(message: types.Message):
@@ -105,8 +123,14 @@ async def shop_handler(message: types.Message):
 @dp.message_handler(lambda m: m.text == "📥 Видео қосу")
 async def start_video_upload(message: types.Message):
     if message.from_user.id in ADMIN_IDS:
-        admin_waiting_action[message.from_user.id] = "video_upload"
-        await message.answer("🎬 Видеоларды жіберіңіз. Бірнешеуін қатарымен де жіберуге болады.")
+        await message.answer("Қай бөлімге видео саласыз?", reply_markup=get_upload_type_keyboard())
+
+@dp.callback_query_handler(lambda c: c.data.startswith("upload_"))
+async def handle_upload_callback(callback_query: types.CallbackQuery):
+    video_type = callback_query.data.replace("upload_", "")
+    admin_waiting_action[callback_query.from_user.id] = "video_upload"
+    admin_video_type[callback_query.from_user.id] = video_type
+    await callback_query.message.answer(f"🎬 {video_type.upper()} видеоларды жіберіңіз.")
 
 @dp.message_handler(content_types=ContentType.VIDEO)
 async def handle_videos(message: types.Message):
@@ -116,21 +140,25 @@ async def handle_videos(message: types.Message):
     if admin_waiting_action.get(message.from_user.id) != "video_upload":
         return
 
+    video_type = admin_video_type.get(message.from_user.id)
+    if not video_type:
+        return
+
     if message.media_group_id:
         media_id = message.media_group_id
         if media_id not in media_groups:
             media_groups[media_id] = []
-        media_groups[media_id].append(message)
+        media_groups[media_id].append((message, video_type))
         await asyncio.sleep(1.5)
         if media_id in media_groups:
-            for msg in media_groups[media_id]:
-                add_video(msg.video.file_id)
+            for msg, vtype in media_groups[media_id]:
+                add_video(msg.video.file_id, vtype)
             count = len(media_groups[media_id])
             del media_groups[media_id]
-            await message.answer(f"✅ {count} видео сақталды.")
+            await message.answer(f"✅ {count} {video_type.upper()} видео сақталды.")
     else:
-        add_video(message.video.file_id)
-        await message.answer("✅ Видео сақталды.")
+        add_video(message.video.file_id, video_type)
+        await message.answer(f"✅ {video_type.upper()} видео сақталды.")
 
 if __name__ == '__main__':
     from aiogram import executor
