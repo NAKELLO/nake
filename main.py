@@ -147,6 +147,8 @@ async def start_cmd(msg: types.Message):
 
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("👶 Детский", "🔞 Взрослый")
+    if msg.from_user.id == ADMIN_ID:
+        kb.add("📊 Статистика", "📢 Рассылка")
     await msg.reply("Категория таңдаңыз:", reply_markup=kb)
 
 # 📊 Статистика және 📢 рассылка
