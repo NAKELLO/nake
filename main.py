@@ -68,15 +68,15 @@ async def video_title(msg: types.Message):
         "id": len(videos) + 1,
         "title": msg.text,
         "file_id": st["file_id"],
-        "category": "kids",  # Барлық видео детский бола береді немесе қажет болса default
-        "cost": 0
+        "category": "kids",
+        "cost": 3
     }
     videos.append(video)
     save_videos()
     await msg.reply("✅ Видео сақталды!")
 
 # 🎮 Видео көру
-@dp.message_handler(lambda m: m.text == "👶 Детский" or m.text == "🔞 Взрослый")
+@dp.message_handler(lambda m: m.text == "👶 Детский")
 async def show_category(msg: types.Message):
     user_id = str(msg.from_user.id)
 
@@ -91,7 +91,7 @@ async def show_category(msg: types.Message):
         await msg.reply("❗ Сіздің бонусыңыз жеткіліксіз. Досыңызды шақырып бонус алыңыз!")
         return
 
-    cat = "kids" if "Детский" in msg.text else "adult"
+    cat = "kids"
     found = [v for v in videos if v["category"] == cat]
     if not found:
         await msg.reply("📂 Бұл категорияда видео жоқ.")
@@ -121,7 +121,7 @@ async def start_cmd(msg: types.Message):
     save_users()
 
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("👶 Детский", "🔞 Взрослый")
+    kb.add("👶 Детский")
     if msg.from_user.id == ADMIN_ID:
         kb.add("📊 Статистика", "📢 Рассылка")
     await msg.reply("Категория таңдаңыз:", reply_markup=kb)
@@ -152,4 +152,4 @@ async def send_broadcast(msg: types.Message):
 
 # 🔁 Ботты іске қосу
 if __name__ == "__main__":
-    executor.start_polling(dp, skip_update
+    executor.start_polling(dp, skip_updates=True)
