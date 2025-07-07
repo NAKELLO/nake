@@ -2,7 +2,6 @@ import logging
 import json
 import os
 from aiogram import Bot, Dispatcher, executor, types
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # 🔐 Token мен Admin ID
 API_TOKEN = '7748542247:AAGVgKPaOvHH7iDL4Uei2hM_zsI_6gCowkM'
@@ -21,7 +20,7 @@ videos = []
 users = {}
 state = {}
 
-# 📥 Видео мен қолданушыларды жүктеу
+# 📅 Видео мен қолданушыларды жүктеу
 if os.path.exists(VIDEOS_FILE):
     with open(VIDEOS_FILE, "r", encoding="utf-8") as f:
         videos = json.load(f)
@@ -30,7 +29,7 @@ if os.path.exists(USERS_FILE):
     with open(USERS_FILE, "r", encoding="utf-8") as f:
         users = json.load(f)
 
-# 💾 Сақтау функциялары
+# 🗞 Сақтау функциялары
 def save_videos():
     with open(VIDEOS_FILE, "w", encoding="utf-8") as f:
         json.dump(videos, f, indent=2)
@@ -39,7 +38,7 @@ def save_users():
     with open(USERS_FILE, "w", encoding="utf-8") as f:
         json.dump(users, f, indent=2)
 
-# 🔄 Каналға тіркелгенін тексеру
+# 🔀 Каналға тіркелгенін тексеру
 async def check_subscriptions(user_id):
     for channel in CHANNELS:
         try:
@@ -50,7 +49,7 @@ async def check_subscriptions(user_id):
             return False
     return True
 
-# 👨‍💻 Админ видео жібереді
+# 👨‍💼 Админ видео жібереді
 @dp.message_handler(content_types=types.ContentType.VIDEO)
 async def video_upload(msg: types.Message):
     if msg.from_user.id != ADMIN_ID:
@@ -59,57 +58,33 @@ async def video_upload(msg: types.Message):
         "file_id": msg.video.file_id,
         "step": "title"
     }
-    await msg.reply("🎬 Видео атауын жазыңыз:")
+    await msg.reply("🎨 Видео атауын жазыңыз:")
 
 # 📝 Видео атауын енгізу
 @dp.message_handler(lambda m: state.get(m.from_user.id, {}).get("step") == "title")
 async def video_title(msg: types.Message):
-    state[msg.from_user.id]["title"] = msg.text
-    state[msg.from_user.id]["step"] = "category"
-    kb = InlineKeyboardMarkup().add(
-        InlineKeyboardButton("👶 Детский", callback_data="cat_kids"),
-        InlineKeyboardButton("🔞 Взрослый", callback_data="cat_adult")
-    )
-    await msg.reply("📁 Категория таңдаңыз:", reply_markup=kb)
+    st = state.pop(msg.from_user.id)
+    video = {
+        "id": len(videos) + 1,
+        "title": msg.text,
+        "file_id": st["file_id"],
+        "category": "kids",  # Барлық видео детский бола береді немесе қажет болса default
+        "cost": 0
+    }
+    videos.append(video)
+    save_videos()
+    await msg.reply("✅ Видео сақталды!")
 
-# 📁 Категория таңдау
-@dp.callback_query_handler(lambda c: c.data.startswith("cat_"))
-async def category_set(c: types.CallbackQuery):
-    cat = "kids" if c.data == "cat_kids" else "adult"
-    state[c.from_user.id]["category"] = cat
-    state[c.from_user.id]["step"] = "cost"
-    await c.message.edit_text("💰 Қанша бонус қажет?")
-
-# 💰 Бонус енгізу
-@dp.message_handler(lambda m: state.get(m.from_user.id, {}).get("step") == "cost")
-async def set_cost(msg: types.Message):
-    try:
-        cost = int(msg.text)
-        st = state.pop(msg.from_user.id)
-        video = {
-            "id": len(videos) + 1,
-            "title": st["title"],
-            "file_id": st["file_id"],
-            "category": st["category"],
-            "cost": cost
-        }
-        videos.append(video)
-        save_videos()
-        await msg.reply("✅ Видео сақталды!")
-    except:
-        await msg.reply("❗ Бонус санын дұрыс жазыңыз!")
-
-# 🎬 Видео көру
+# 🎮 Видео көру
 @dp.message_handler(lambda m: m.text == "👶 Детский" or m.text == "🔞 Взрослый")
 async def show_category(msg: types.Message):
     user_id = str(msg.from_user.id)
 
     if not await check_subscriptions(user_id):
-        kb = InlineKeyboardMarkup(row_width=1)
+        text = "Ботты қолдану үшін келесі каналдарға тіркеліңіз:\n"
         for ch in CHANNELS:
-            kb.add(InlineKeyboardButton(f"Тіркелу: {ch}", url=f"https://t.me/{ch[1:]}", callback_data="sub"))
-        kb.add(InlineKeyboardButton("✅ Тіркелдім", callback_data="check_sub"))
-        await msg.reply("Ботты қолдану үшін каналдарға тіркеліңіз:", reply_markup=kb)
+            text += f"➡️ {ch}\n"
+        await msg.reply(text)
         return
 
     if user_id not in users or users[user_id]["balance"] < 1:
@@ -177,4 +152,4 @@ async def send_broadcast(msg: types.Message):
 
 # 🔁 Ботты іске қосу
 if __name__ == "__main__":
-    executor.start_polling(dp, skip_updates=True)
+    executor.start_polling(dp, skip_update
