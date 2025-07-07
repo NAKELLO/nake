@@ -4,9 +4,17 @@ import os
 import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-from aiogram.utils.executor import start_polling
+from aiogram.dispatcher.webhook import get_new_configured_app
+from aiohttp import web
 
 API_TOKEN = '7748542247:AAGVgKPaOvHH7iDL4Uei2hM_zsI_6gCowkM'
+WEBHOOK_HOST = 'https://your-railway-url.up.railway.app'  # 👉 МЫНА ЖЕРГЕ НАҚТЫ Railway сілтемесін жаз
+WEBHOOK_PATH = '/webhook'
+WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
+
+WEBAPP_HOST = '0.0.0.0'
+WEBAPP_PORT = int(os.environ.get('PORT', 8000))
+
 ADMIN_IDS = [7047272652, 6927494520]
 CHANNELS = ['@Qazhuboyndar', '@oqigalaruyatsiz']
 
@@ -68,11 +76,21 @@ async def save_video_album_handler(message: types.Message):
     save_json(KIDS_VIDEOS_FILE, kids_videos)
     await message.answer(f"✅ {saved_count} видео сақталды.")
 
-# --- webhook тазалау ---
-async def on_startup(dp):
-    await bot.delete_webhook(drop_pending_updates=True)
-    logging.info("🧹 Webhook тазаланды.")
+# --- webhook іске қосу ---
+async def on_startup(app):
+    await bot.set_webhook(WEBHOOK_URL)
+    logging.info("📬 Webhook орнатылды")
+
+async def on_shutdown(app):
+    logging.warning('⚠️ Бот өшірілуде...')
+    await bot.delete_webhook()
+    logging.warning('❌ Webhook өшірілді')
+
+app = web.Application()
+app.on_startup.append(on_startup)
+app.on_shutdown.append(on_shutdown)
+app.router.add_post(WEBHOOK_PATH, get_new_configured_app(dispatcher=dp, bot=bot))
 
 if __name__ == '__main__':
-    print("🤖 Бот іске қосылды!")
-    start_polling(dp, skip_updates=True, on_startup=on_startup)
+    print("🌐 Webhook режимінде бот іске қосылды!")
+    web.run_app(app, host=WEBAPP_HOST, port=WEBAPP_PORT)
