@@ -114,7 +114,7 @@ async def premium_handler(message: types.Message):
 
 @dp.message_handler(lambda m: m.text == "🔥 Жанр")
 async def genre_handler(message: types.Message):
-    await message.answer("🔖 Бұл бөлім әзірге дайын емес. Кешіріңіз.")
+    await message.answer("🔖 Жанр таңдаңыз:", reply_markup=get_video_type_keyboard())
 
 @dp.message_handler(lambda m: m.text == "🛍 Магазин")
 async def shop_handler(message: types.Message):
