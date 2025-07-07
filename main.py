@@ -20,7 +20,7 @@ media_groups = {}
 def get_main_keyboard(user_id):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.row(
-        KeyboardButton("🛍 Магазин"), KeyboardButton("▶️ Смотреть"), KeyboardButton("🔥 Жанр")
+        KeyboardButton("🛍 Магазин"), KeyboardButton("▶️ Смотреть")
     )
     kb.row(
         KeyboardButton("💎 Заработать"), KeyboardButton("🌸 PREMIUM"), KeyboardButton("💎 Баланс")
@@ -66,7 +66,7 @@ async def start_handler(message: types.Message):
         return await message.answer(f"Ботты пайдалану үшін келесі каналдарға жазылыңыз:\n{channels_list}")
 
     await message.answer(
-        "Добро пожаловать. 👋\n\nПоздравляю, ты нашёл что искал так долго, нажми на кнопку Смотреть\n\nКнопку Жанр 🔥 это важная кнопка, не забывай его использовать!",
+        "Добро пожаловать. 👋\n\nПоздравляю, ты нашёл что искал так долго, нажми на кнопку Смотреть",
         reply_markup=get_main_keyboard(message.from_user.id)
     )
 
@@ -111,10 +111,6 @@ async def premium_handler(message: types.Message):
         "💳 Төлеу үшін админге жазыңыз: @KazHubALU"
     )
     await message.answer(text, parse_mode="Markdown")
-
-@dp.message_handler(lambda m: m.text == "🔥 Жанр")
-async def genre_handler(message: types.Message):
-    await message.answer("🔖 Жанр таңдаңыз:", reply_markup=get_video_type_keyboard())
 
 @dp.message_handler(lambda m: m.text == "🛍 Магазин")
 async def shop_handler(message: types.Message):
