@@ -20,19 +20,16 @@ media_groups = {}
 def get_main_keyboard(user_id):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.row(
-        KeyboardButton("🛍 Магазин"), KeyboardButton("▶️ Смотреть")
+        KeyboardButton("🛍 Магазин")
+    )
+    kb.row(
+        KeyboardButton("🧒 Детский"), KeyboardButton("🔞 Взрослый")
     )
     kb.row(
         KeyboardButton("💎 Заработать"), KeyboardButton("🌸 PREMIUM"), KeyboardButton("💎 Баланс")
     )
     if user_id in ADMIN_IDS:
         kb.add(KeyboardButton("📥 Видео қосу"))
-    return kb
-
-def get_video_type_keyboard():
-    kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("🧒 Детский", callback_data="watch_kids"))
-    kb.add(InlineKeyboardButton("🔞 Взрослый", callback_data="watch_adult"))
     return kb
 
 def get_upload_type_keyboard():
@@ -66,29 +63,25 @@ async def start_handler(message: types.Message):
         return await message.answer(f"Ботты пайдалану үшін келесі каналдарға жазылыңыз:\n{channels_list}")
 
     await message.answer(
-        "Добро пожаловать. 👋\n\nПоздравляю, ты нашёл что искал так долго, нажми на кнопку Смотреть",
+        "Добро пожаловать. 👋\n\nПоздравляю, ты нашёл что искал так долго.",
         reply_markup=get_main_keyboard(message.from_user.id)
     )
 
-@dp.message_handler(lambda m: m.text == "▶️ Смотреть")
-async def watch_handler(message: types.Message):
-    await message.answer("Қай видеоны көргіңіз келеді?", reply_markup=get_video_type_keyboard())
-
-@dp.callback_query_handler(lambda c: c.data.startswith("watch_"))
-async def handle_watch_callback(callback_query: types.CallbackQuery):
-    user_id = str(callback_query.from_user.id)
-    video_type = callback_query.data.replace("watch_", "")
+@dp.message_handler(lambda m: m.text in ["🧒 Детский", "🔞 Взрослый"])
+async def handle_video_type(message: types.Message):
+    user_id = str(message.from_user.id)
+    video_type = "kids" if message.text == "🧒 Детский" else "adult"
     video = get_random_video(video_type)
 
     if not video:
-        return await callback_query.message.answer("📭 Әзірге видео жоқ. Кейінірек қайта көріңіз.")
+        return await message.answer("📭 Әзірге видео жоқ. Кейінірек қайта көріңіз.")
 
-    if callback_query.from_user.id not in ADMIN_IDS:
+    if message.from_user.id not in ADMIN_IDS:
         if get_bonus(user_id) < 3:
-            return await callback_query.message.answer("❗ 3 бонус қажет. Достарыңызды шақырыңыз.")
+            return await message.answer("❗ 3 бонус қажет. Достарыңызды шақырыңыз.")
         decrease_bonus(user_id, 3)
 
-    await callback_query.message.answer_video(video)
+    await message.answer_video(video)
 
 @dp.message_handler(lambda m: m.text == "💎 Баланс")
 async def balance_handler(message: types.Message):
