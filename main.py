@@ -1,175 +1,94 @@
-import logging
-import asyncio
-import sqlite3
-import random
-from aiogram import Bot, Dispatcher, types
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup, ContentType
-from aiogram.utils.deep_linking import get_start_link
-import os
+import logging, json, os
+from aiogram import Bot, Dispatcher, executor, types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'
-ADMIN_IDS = [7047272652, 6927494520]
-CHANNELS = ['@Qazhuboyndar', '@oqigalaruyatsiz']
+API_TOKEN = 'ТВОЙ_БОТ_ТОКЕН'
+ADMIN_ID = 6927494520  # Өз ID-ң
 
-bot = Bot(token=API_TOKEN)
+bot = Bot(7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4)
 dp = Dispatcher(bot)
 logging.basicConfig(level=logging.INFO)
 
-admin_waiting_action = {}
-admin_video_type = {}
-VIDEO_FOLDER = "saved_videos"
+VIDEOS_FILE = "videos.json"
+videos = []
+state = {}
 
-if not os.path.exists(VIDEO_FOLDER):
-    os.makedirs(VIDEO_FOLDER)
+# 📂 Файлдан жүктеу
+if os.path.exists(VIDEOS_FILE):
+    with open(VIDEOS_FILE, "r") as f:
+        videos = json.load(f)
 
-def init_db():
-    conn = sqlite3.connect("bot.db")
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS users (
-        user_id TEXT PRIMARY KEY,
-        invited_by TEXT,
-        bonus INTEGER DEFAULT 2
-    )''')
-    c.execute('''CREATE TABLE IF NOT EXISTS videos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        file_id TEXT,
-        type TEXT,
-        file_path TEXT
-    )''')
-    conn.commit()
-    conn.close()
+# 💾 Файлға сақтау
+def save_videos():
+    with open(VIDEOS_FILE, "w") as f:
+        json.dump(videos, f, indent=2)
 
-def add_user(user_id, invited_by=None):
-    conn = sqlite3.connect("bot.db")
-    c = conn.cursor()
-    c.execute("INSERT OR IGNORE INTO users (user_id, invited_by) VALUES (?, ?)", (user_id, invited_by))
-    conn.commit()
-    conn.close()
-
-def add_bonus(user_id, amount):
-    conn = sqlite3.connect("bot.db")
-    c = conn.cursor()
-    c.execute("UPDATE users SET bonus = bonus + ? WHERE user_id = ?", (amount, user_id))
-    conn.commit()
-    conn.close()
-
-def get_bonus(user_id):
-    conn = sqlite3.connect("bot.db")
-    c = conn.cursor()
-    c.execute("SELECT bonus FROM users WHERE user_id = ?", (user_id,))
-    result = c.fetchone()
-    conn.close()
-    return result[0] if result else 0
-
-def decrease_bonus(user_id, amount):
-    conn = sqlite3.connect("bot.db")
-    c = conn.cursor()
-    c.execute("UPDATE users SET bonus = bonus - ? WHERE user_id = ?", (amount, user_id))
-    conn.commit()
-    conn.close()
-
-def add_video(file_id, video_type, file_path):
-    conn = sqlite3.connect("bot.db")
-    c = conn.cursor()
-    c.execute("INSERT INTO videos (file_id, type, file_path) VALUES (?, ?, ?)", (file_id, video_type, file_path))
-    conn.commit()
-    conn.close()
-
-def get_random_video(video_type):
-    conn = sqlite3.connect("bot.db")
-    c = conn.cursor()
-    c.execute("SELECT file_id FROM videos WHERE type = ?", (video_type,))
-    results = c.fetchall()
-    conn.close()
-    return random.choice(results)[0] if results else None
-
-def get_main_keyboard(user_id):
-    kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.row(KeyboardButton("🧒 Детский"), KeyboardButton("🔞 Взрослый"))
-    kb.row(KeyboardButton("💎 Баланс"))
-    if user_id in ADMIN_IDS:
-        kb.row(KeyboardButton("📥 Видео қосу"))
-    return kb
-
-@dp.message_handler(commands=['start'])
-async def start_cmd(message: types.Message):
-    user_id = str(message.from_user.id)
-    payload = message.get_args()
-    add_user(user_id, payload if payload else None)
-
-    if payload and payload != user_id:
-        add_bonus(payload, 2)
-
-    if not await check_subscription(message.from_user.id):
-        channels_list = "\n".join(CHANNELS)
-        return await message.answer(f"Ботты пайдалану үшін келесі каналдарға жазылыңыз:\n{channels_list}")
-
-    await message.answer("Қош келдіңіз!", reply_markup=get_main_keyboard(message.from_user.id))
-
-async def check_subscription(user_id):
-    for channel in CHANNELS:
-        try:
-            member = await bot.get_chat_member(channel, user_id)
-            if member.status not in ["member", "administrator", "creator"]:
-                return False
-        except:
-            return False
-    return True
-
-@dp.message_handler(lambda m: m.text in ["🧒 Детский", "🔞 Взрослый"])
-async def send_video(message: types.Message):
-    user_id = str(message.from_user.id)
-    video_type = "kids" if message.text == "🧒 Детский" else "adult"
-    video = get_random_video(video_type)
-    if not video:
-        return await message.answer("📭 Видео жоқ.")
-
-    if message.from_user.id not in ADMIN_IDS:
-        if get_bonus(user_id) < 3:
-            return await message.answer("❗ 3 бонус қажет.")
-        decrease_bonus(user_id, 3)
-
-    await message.answer_video(video)
-
-@dp.message_handler(lambda m: m.text == "💎 Баланс")
-async def show_balance(message: types.Message):
-    user_id = str(message.from_user.id)
-    bonus = get_bonus(user_id)
-    ref_link = await get_start_link(str(user_id), encode=True)
-    await message.answer(f"Сізде {bonus} бонус бар.\nРеф. сілтеме: {ref_link}")
-
-@dp.message_handler(lambda m: m.text == "📥 Видео қосу")
-async def ask_video_type(message: types.Message):
-    if message.from_user.id in ADMIN_IDS:
-        kb = InlineKeyboardMarkup()
-        kb.add(InlineKeyboardButton("🧒 Детский", callback_data="upload_kids"))
-        kb.add(InlineKeyboardButton("🔞 Взрослый", callback_data="upload_adult"))
-        await message.answer("Қай бөлімге видео саласыз?", reply_markup=kb)
-
-@dp.callback_query_handler(lambda c: c.data.startswith("upload_"))
-async def set_upload_type(callback_query: types.CallbackQuery):
-    video_type = callback_query.data.replace("upload_", "")
-    admin_waiting_action[callback_query.from_user.id] = video_type
-    await callback_query.message.answer("Енді видеоны жіберіңіз")
-
-@dp.message_handler(content_types=ContentType.VIDEO)
-async def save_video(message: types.Message):
-    if message.from_user.id not in ADMIN_IDS:
+# 👨‍💻 Админ видео жібереді
+@dp.message_handler(content_types=types.ContentType.VIDEO)
+async def video_upload(msg: types.Message):
+    if msg.from_user.id != ADMIN_ID:
         return
+    state[msg.from_user.id] = {
+        "file_id": msg.video.file_id,
+        "step": "title"
+    }
+    await msg.reply("🎬 Видео атауын жазыңыз:")
 
-    video_type = admin_waiting_action.get(message.from_user.id)
-    if not video_type:
+# 📝 Атауы
+@dp.message_handler(lambda m: state.get(m.from_user.id, {}).get("step") == "title")
+async def video_title(msg: types.Message):
+    state[msg.from_user.id]["title"] = msg.text
+    state[msg.from_user.id]["step"] = "category"
+    kb = InlineKeyboardMarkup().add(
+        InlineKeyboardButton("👶 Детский", callback_data="cat_kids"),
+        InlineKeyboardButton("🔞 Взрослый", callback_data="cat_adult")
+    )
+    await msg.reply("📁 Категория таңдаңыз:", reply_markup=kb)
+
+# 📁 Категория таңдау
+@dp.callback_query_handler(lambda c: c.data.startswith("cat_"))
+async def category_set(c: types.CallbackQuery):
+    cat = "kids" if c.data == "cat_kids" else "adult"
+    state[c.from_user.id]["category"] = cat
+    state[c.from_user.id]["step"] = "cost"
+    await c.message.edit_text("💰 Қанша бонус қажет?")
+
+# 💰 Бонус енгізу
+@dp.message_handler(lambda m: state.get(m.from_user.id, {}).get("step") == "cost")
+async def set_cost(msg: types.Message):
+    try:
+        cost = int(msg.text)
+        st = state.pop(msg.from_user.id)
+        video = {
+            "id": len(videos) + 1,
+            "title": st["title"],
+            "file_id": st["file_id"],
+            "category": st["category"],
+            "cost": cost
+        }
+        videos.append(video)
+        save_videos()
+        await msg.reply("✅ Видео сақталды!")
+    except:
+        await msg.reply("❗ Бонус санын дұрыс жазыңыз!")
+
+# 🎬 Видео көру
+@dp.message_handler(lambda m: m.text == "👶 Детский" or m.text == "🔞 Взрослый")
+async def show_category(msg: types.Message):
+    cat = "kids" if "Детский" in msg.text else "adult"
+    found = [v for v in videos if v["category"] == cat]
+    if not found:
+        await msg.reply("📂 Видео жоқ.")
         return
+    for v in found:
+        await bot.send_video(msg.chat.id, v["file_id"], caption=f"{v['title']} — {v['cost']} бонус")
 
-    file_id = message.video.file_id
-    file = await bot.get_file(file_id)
-    file_path = f"{VIDEO_FOLDER}/{file_id}.mp4"
-    await bot.download_file(file.file_path, file_path)
-    add_video(file_id, video_type, file_path)
-    await message.answer(f"✅ {video_type.upper()} видео сақталды.")
-    admin_waiting_action.pop(message.from_user.id, None)
+# 📍 Start (міндетті емес)
+@dp.message_handler(commands=["start"])
+async def start_cmd(msg: types.Message):
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("👶 Детский", "🔞 Взрослый")
+    await msg.reply("Категория таңда:", reply_markup=kb)
 
-if __name__ == '__main__':
-    from aiogram import executor
-    init_db()
+if name == "main":
     executor.start_polling(dp, skip_updates=True)
