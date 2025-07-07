@@ -50,13 +50,11 @@ def get_main_keyboard(user_id):
 @dp.message_handler(lambda m: m.text == "💎 VIP қолжетімділік")
 async def vip_handler(message: types.Message):
     text = (
-        "💎 *VIP қолжетімділік бағасы:*
-"
-        "\n"
+        "💎 *VIP қолжетімділік бағасы:*\n\n"
         "📦 100 бонус – 1500 ₸\n"
         "📦 200 бонус – 2000 ₸\n"
         "⏳ 1 ай шектеусіз көру – 4000 ₸\n\n"
-        "💳 Төлеу үшін админге жазыңыз: @YourAdminUsername"
+        "💳 Төлеу үшін админге жазыңыз: @KazHubALU"
     )
     await message.answer(text, reply_markup=get_main_keyboard(message.from_user.id), parse_mode="Markdown")
 
