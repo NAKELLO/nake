@@ -1,55 +1,51 @@
 import asyncio
-import json
 import os
 import logging
 from aiogram import Bot, Dispatcher, types
-from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
 
 API_TOKEN = '7748542247:AAGVgKPaOvHH7iDL4Uei2hM_zsI_6gCowkM'
+ADMIN_USERNAME = '@KazHubALU'
+REQUIRED_CHANNELS = ['@oqigalaruyatsiz', '@Qazhuboyndar']
 
-# Railway ішіндегі өз доменіңді WEBHOOK_HOST қып қой
 WEBHOOK_HOST = os.getenv("WEBHOOK_HOST", "https://nake-production.up.railway.app")
-WEBHOOK_PATH = '/webhook'
+WEBHOOK_PATH = "/webhook"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
+WEBAPP_HOST = "0.0.0.0"
+WEBAPP_PORT = int(os.getenv("PORT", 8000))
 
-WEBAPP_HOST = '0.0.0.0'
-WEBAPP_PORT = int(os.environ.get('PORT', 8000))
-
-bot = Bot(token=API_TOKEN)
-dp = Dispatcher(storage=MemoryStorage())
+# Логгер баптауы
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Қарапайым хендлер - бот жауап беріп тұрғанын тексереді
+# Бот пен диспетчер
+bot = Bot(token=API_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+dp = Dispatcher()
+
 @dp.message()
-async def echo_all(message: types.Message):
+async def echo_handler(message: types.Message):
     await message.answer("🤖 Бот жұмыс істеп тұр!")
 
-# Webhook орнату және тазалау
-async def on_startup(app):
+async def on_startup(bot: Bot):
     await bot.set_webhook(WEBHOOK_URL)
-    logging.info("✅ Webhook орнатылды")
+    logger.info("✅ Webhook орнатылды")
 
-async def on_shutdown(app):
+async def on_shutdown(bot: Bot):
     await bot.delete_webhook()
-    logging.info("🧹 Webhook өшірілді")
+    logger.info("🧹 Webhook тазаланды")
 
-# Webhook қабылдайтын функция
-async def handle_webhook(request):
-    try:
-        data = await request.json()
-        update = types.Update(**data)
-        await dp.feed_update(bot, update)
-    except Exception as e:
-        logging.exception("❌ Webhook error")
-    return web.Response()
+async def main():
+    app = web.Application()
+    SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=WEBHOOK_PATH)
+    setup_application(app, dp, bot=bot)
+    app.on_startup.append(lambda app: on_startup(bot))
+    app.on_shutdown.append(lambda app: on_shutdown(bot))
 
-# AIOHTTP серверін орнату
-app = web.Application()
-app.on_startup.append(on_startup)
-app.on_shutdown.append(on_shutdown)
-app.router.add_post(WEBHOOK_PATH, handle_webhook)
+    print("🚀 Бот іске қосылды")
+    return app
 
 if __name__ == '__main__':
-    print("🚀 Webhook іске қосылуда...")
-    web.run_app(app, host=WEBAPP_HOST, port=WEBAPP_PORT)
+    web.run_app(main(), host=WEBAPP_HOST, port=WEBAPP_PORT)
