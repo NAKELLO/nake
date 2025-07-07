@@ -1,51 +1,90 @@
-import asyncio
-import os
 import logging
-from aiogram import Bot, Dispatcher, types
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
-from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
-from aiohttp import web
+import json
+import os
+from aiogram import Bot, Dispatcher, executor, types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-API_TOKEN = '7748542247:AAGVgKPaOvHH7iDL4Uei2hM_zsI_6gCowkM'
-ADMIN_USERNAME = '@KazHubALU'
-REQUIRED_CHANNELS = ['@oqigalaruyatsiz', '@Qazhuboyndar']
+# 🔐 Token мен Admin ID
+API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'
+ADMIN_ID = 6927494520
 
-WEBHOOK_HOST = os.getenv("WEBHOOK_HOST", "https://nake-production.up.railway.app")
-WEBHOOK_PATH = "/webhook"
-WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
-WEBAPP_HOST = "0.0.0.0"
-WEBAPP_PORT = int(os.getenv("PORT", 8000))
-
-# Логгер баптауы
+# 🔧 Bot және Dispatcher
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher(bot)
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
-# Бот пен диспетчер
-bot = Bot(token=API_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-dp = Dispatcher()
+# 📂 Видео файл
+VIDEOS_FILE = "videos.json"
+videos = []
+state = {}
 
-@dp.message()
-async def echo_handler(message: types.Message):
-    await message.answer("🤖 Бот жұмыс істеп тұр!")
+# 📥 Видео файлдан жүктеу
+if os.path.exists(VIDEOS_FILE):
+    with open(VIDEOS_FILE, "r", encoding="utf-8") as f:
+        videos = json.load(f)
 
-async def on_startup(bot: Bot):
-    await bot.set_webhook(WEBHOOK_URL)
-    logger.info("✅ Webhook орнатылды")
+# 💾 Видео файлға сақтау
+def save_videos():
+    with open(VIDEOS_FILE, "w", encoding="utf-8") as f:
+        json.dump(videos, f, indent=2)
 
-async def on_shutdown(bot: Bot):
-    await bot.delete_webhook()
-    logger.info("🧹 Webhook тазаланды")
+# 👨‍💻 Админ видео жібереді
+@dp.message_handler(content_types=types.ContentType.VIDEO)
+async def video_upload(msg: types.Message):
+    if msg.from_user.id != ADMIN_ID:
+        return
+    state[msg.from_user.id] = {
+        "file_id": msg.video.file_id,
+        "step": "title"
+    }
+    await msg.reply("🎬 Видео атауын жазыңыз:")
 
-async def main():
-    app = web.Application()
-    SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=WEBHOOK_PATH)
-    setup_application(app, dp, bot=bot)
-    app.on_startup.append(lambda app: on_startup(bot))
-    app.on_shutdown.append(lambda app: on_shutdown(bot))
+# 📝 Видео атауын енгізу
+@dp.message_handler(lambda m: state.get(m.from_user.id, {}).get("step") == "title")
+async def video_title(msg: types.Message):
+    state[msg.from_user.id]["title"] = msg.text
+    state[msg.from_user.id]["step"] = "category"
+    kb = InlineKeyboardMarkup().add(
+        InlineKeyboardButton("👶 Детский", callback_data="cat_kids"),
+        InlineKeyboardButton("🔞 Взрослый", callback_data="cat_adult")
+    )
+    await msg.reply("📁 Категория таңдаңыз:", reply_markup=kb)
 
-    print("🚀 Бот іске қосылды")
-    return app
+# 📁 Категория таңдау
+@dp.callback_query_handler(lambda c: c.data.startswith("cat_"))
+async def category_set(c: types.CallbackQuery):
+    cat = "kids" if c.data == "cat_kids" else "adult"
+    state[c.from_user.id]["category"] = cat
+    state[c.from_user.id]["step"] = "cost"
+    await c.message.edit_text("💰 Қанша бонус қажет?")
 
-if __name__ == '__main__':
-    web.run_app(main(), host=WEBAPP_HOST, port=WEBAPP_PORT)
+# 💰 Бонус енгізу
+@dp.message_handler(lambda m: state.get(m.from_user.id, {}).get("step") == "cost")
+async def set_cost(msg: types.Message):
+    try:
+        cost = int(msg.text)
+        st = state.pop(msg.from_user.id)
+        video = {
+            "id": len(videos) + 1,
+            "title": st["title"],
+            "file_id": st["file_id"],
+            "category": st["category"],
+            "cost": cost
+        }
+        videos.append(video)
+        save_videos()
+        await msg.reply("✅ Видео сақталды!")
+    except:
+        await msg.reply("❗ Бонус санын дұрыс жазыңыз!")
+
+# 🎬 Видео көру
+@dp.message_handler(lambda m: m.text == "👶 Детский" or m.text == "🔞 Взрослый")
+async def show_category(msg: types.Message):
+    cat = "kids" if "Детский" in msg.text else "adult"
+    found = [v for v in videos if v["category"] == cat]
+    if not found:
+        await msg.reply("📂 Бұл категорияда видео жоқ.")
+        return
+    for v in found:
+        await bot.send_video(
+            msg.chat.id,
