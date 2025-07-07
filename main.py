@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'
-ADMIN_IDS = [7047272652, 1234567890]  # Бірнеше админ ID осында жазылады
+ADMIN_IDS = [7047272652, 6927494520]  # Көп админдер
 CHANNELS = ['@Qazhuboyndar', '@oqigalaruyatsiz']
 BLOCKED_CHAT_IDS = [-1002129935121]
 
@@ -19,7 +19,6 @@ logging.basicConfig(level=logging.INFO)
 
 admin_waiting_broadcast = {}
 
-# JSON жүктеу/сақтау
 def load_json(file):
     if not os.path.exists(file):
         return {"all": []} if 'videos' in file else {}
@@ -30,7 +29,6 @@ def save_json(file, data):
     with open(file, 'w') as f:
         json.dump(data, f, indent=2)
 
-# Каналға жазылуды тексеру
 async def check_subscription(user_id):
     for channel in CHANNELS:
         try:
@@ -41,7 +39,6 @@ async def check_subscription(user_id):
             return False
     return True
 
-# Бас меню
 def get_main_keyboard(user_id):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add(KeyboardButton("👶 Детский"), KeyboardButton("🎁 Бонус"))
@@ -50,7 +47,19 @@ def get_main_keyboard(user_id):
         kb.row(KeyboardButton("📢 Хабарлама жіберу"), KeyboardButton("👥 Қолданушылар саны"))
     return kb
 
-# /start
+@dp.message_handler(lambda m: m.text == "💎 VIP қолжетімділік")
+async def vip_handler(message: types.Message):
+    text = (
+        "💎 *VIP қолжетімділік бағасы:*
+"
+        "\n"
+        "📦 100 бонус – 1500 ₸\n"
+        "📦 200 бонус – 2000 ₸\n"
+        "⏳ 1 ай шектеусіз көру – 4000 ₸\n\n"
+        "💳 Төлеу үшін админге жазыңыз: @YourAdminUsername"
+    )
+    await message.answer(text, reply_markup=get_main_keyboard(message.from_user.id), parse_mode="Markdown")
+
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     if message.chat.type != 'private':
@@ -86,59 +95,7 @@ async def start(message: types.Message):
 
     await message.answer("Қош келдіңіз!", reply_markup=get_main_keyboard(message.from_user.id))
 
-# 👶 Детский видео
-@dp.message_handler(lambda m: m.text == "👶 Детский")
-async def kids_handler(message: types.Message):
-    user_id = str(message.from_user.id)
-    bonus = load_json(BONUS_FILE)
-    users = load_json(USERS_FILE)
-    kids_videos = load_json(KIDS_VIDEOS_FILE).get("all", [])
-
-    if not kids_videos:
-        await message.answer("⚠️ Видео қоры бос.", reply_markup=get_main_keyboard(message.from_user.id))
-        return
-
-    if user_id not in users:
-        users[user_id] = {"kids": 0, "invited": []}
-
-    user_bonus = bonus.get(user_id, 0)
-    if message.from_user.id not in ADMIN_IDS and user_bonus < 3:
-        await message.answer("❌ Бұл бөлімді көру үшін 3 бонус қажет.", reply_markup=get_main_keyboard(message.from_user.id))
-        return
-
-    index = users[user_id]["kids"] % len(kids_videos)
-    await message.answer_video(kids_videos[index])
-    users[user_id]["kids"] += 1
-
-    if message.from_user.id not in ADMIN_IDS:
-        bonus[user_id] -= 3
-
-        for ref_id, data in users.items():
-            if user_id in data.get("invited", []):
-                if ref_id not in [str(aid) for aid in ADMIN_IDS]:
-                    bonus[ref_id] = bonus.get(ref_id, 0) + 1
-                    try:
-                        await bot.send_message(int(ref_id), "👶 Сіздің реферал видео көрді — сізге 1 бонус қосылды!")
-                    except:
-                        pass
-                break
-
-    save_json(USERS_FILE, users)
-    save_json(BONUS_FILE, bonus)
-
-# 🎁 Бонус
-@dp.message_handler(lambda m: m.text == "🎁 Бонус")
-async def bonus_handler(message: types.Message):
-    user_id = str(message.from_user.id)
-    bonus = load_json(BONUS_FILE)
-    current = bonus.get(user_id, 0)
-    await message.answer(f"🎯 Сіздің бонусыңыз: {current}", reply_markup=get_main_keyboard(message.from_user.id))
-
-# 💎 VIP
-@dp.message_handler(lambda m: m.text == "💎 VIP қолжетімділік")
-async def vip_handler(message: types.Message):
-    text = (
-        "💎 *VIP қолжетімділік бағасы:*\n\n"
-        "📦 100 бонус – 1500 ₸\n"
-        "📦 200 бонус – 2000 ₸\n"
-       
+if __name__ == '__main__':
+    print("🤖 Бот іске қосылды!")
+    logging.info("✅ Polling басталды...")
+    executor.start_polling(dp, skip_updates=True)
