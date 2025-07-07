@@ -8,7 +8,7 @@ from aiogram.dispatcher.webhook import get_new_configured_app
 from aiohttp import web
 
 API_TOKEN = '7748542247:AAGVgKPaOvHH7iDL4Uei2hM_zsI_6gCowkM'
-WEBHOOK_HOST = 'https://your-railway-url.up.railway.app'  # 👉 МЫНА ЖЕРГЕ НАҚТЫ Railway сілтемесін жаз
+WEBHOOK_HOST = 'https://railway.com/project/0d8983ac-c88d-43c0-bfda-199b06c722f5/service/9c2b7f75-7b1f-4560-a479-1c25559ef21b?environmentId=b56e155d-c171-496f-8c95-14286bb9ec03&id=c4803206-d9a2-4e8b-8848-93f9f3fde86f#deploy'  # 👉 МЫНА ЖЕРГЕ НАҚТЫ Railway сілтемесін жаз
 WEBHOOK_PATH = '/webhook'
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
