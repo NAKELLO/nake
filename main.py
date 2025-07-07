@@ -58,6 +58,41 @@ async def vip_handler(message: types.Message):
     )
     await message.answer(text, reply_markup=get_main_keyboard(message.from_user.id), parse_mode="Markdown")
 
+@dp.message_handler(lambda m: m.text == "👶 Детский")
+async def kids_handler(message: types.Message):
+    user_id = str(message.from_user.id)
+    bonus = load_json(BONUS_FILE)
+    users = load_json(USERS_FILE)
+    kids_videos = load_json(KIDS_VIDEOS_FILE).get("all", [])
+
+    if not kids_videos:
+        await message.answer("⚠️ Видео қоры бос.", reply_markup=get_main_keyboard(message.from_user.id))
+        return
+
+    if user_id not in users:
+        users[user_id] = {"kids": 0, "invited": []}
+
+    if message.from_user.id not in ADMIN_IDS and bonus.get(user_id, 0) < 3:
+        await message.answer("❌ Бұл бөлімді көру үшін 3 бонус қажет.", reply_markup=get_main_keyboard(message.from_user.id))
+        return
+
+    index = users[user_id]["kids"] % len(kids_videos)
+    await message.answer_video(kids_videos[index])
+    users[user_id]["kids"] += 1
+
+    if message.from_user.id not in ADMIN_IDS:
+        bonus[user_id] -= 3
+
+    save_json(USERS_FILE, users)
+    save_json(BONUS_FILE, bonus)
+
+@dp.message_handler(lambda m: m.text == "🎁 Бонус")
+async def bonus_handler(message: types.Message):
+    user_id = str(message.from_user.id)
+    bonus = load_json(BONUS_FILE)
+    current = bonus.get(user_id, 0)
+    await message.answer(f"🎯 Сіздің бонусыңыз: {current}", reply_markup=get_main_keyboard(message.from_user.id))
+
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     if message.chat.type != 'private':
