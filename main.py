@@ -1,3 +1,6 @@
+# Қате болған triple-quoted string орнына дұрыс f-string қолдану үшін кодты жаңартамыз
+
+corrected_bot_code = """
 import logging
 import asyncio
 import sqlite3
@@ -186,16 +189,14 @@ if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
 """
 
-# Файл жолын сақтау
-bot_path = "/mnt/data/main.py"
+# Жаңартылған кодты файлға қайта жазу
+corrected_path = "/mnt/data/main.py"
+with open(corrected_path, "w", encoding="utf-8") as f:
+    f.write(corrected_bot_code)
 
-# Кодты файлға жазу
-with open(bot_path, "w", encoding="utf-8") as f:
-    f.write(bot_code)
+# Жаңартылған zip пакетін жасау
+fixed_zip_path = "/mnt/data/telegram_bot_fixed.zip"
+with ZipFile(fixed_zip_path, 'w') as zipf:
+    zipf.write(corrected_path, arcname="main.py")
 
-# Zip жасау
-zip_path = "/mnt/data/telegram_bot_ready.zip"
-with ZipFile(zip_path, 'w') as zipf:
-    zipf.write(bot_path, arcname="main.py")
-
-zip_path
+fixed_zip_path
