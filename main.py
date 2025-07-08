@@ -1,148 +1,172 @@
+import os
+import json
 import logging
 import sqlite3
-import asyncio
-from aiogram import Bot, Dispatcher, F, types
-from aiogram.types import Message
-from aiogram.enums import ParseMode
-from aiogram.utils.keyboard import ReplyKeyboardBuilder
-from aiogram.utils.markdown import hbold
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.utils import executor
 
-API_TOKEN = "7748542247:AAGVgKPaOvHH7iDL4Uei2hM_zsI_6gCowkM"
-ADMIN_ID = 7702280273
+API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'
+ADMIN_IDS = [7702280273]  # Өз Telegram ID-ні қой
 CHANNELS = ["@oqigalaruyatsiz", "@Qazhuboyndar"]
 
-bot = Bot(API_TOKEN, parse_mode=ParseMode.HTML)
-dp = Dispatcher()
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher(bot)
+logging.basicConfig(level=logging.INFO)
 
-# --- Database ---
-conn = sqlite3.connect("database.db")
+# 🎮 Бонусты басқару
+BONUS_FILE = 'bonus.json'
+if not os.path.exists(BONUS_FILE):
+    with open(BONUS_FILE, 'w') as f:
+        json.dump({}, f)
+
+def load_bonus():
+    with open(BONUS_FILE, 'r') as f:
+        return json.load(f)
+
+def save_bonus(bonus):
+    with open(BONUS_FILE, 'w') as f:
+        json.dump(bonus, f)
+
+def get_bonus(user_id):
+    bonus = load_bonus()
+    return bonus.get(str(user_id), 2)
+
+def update_bonus(user_id, amount):
+    bonus = load_bonus()
+    bonus[str(user_id)] = bonus.get(str(user_id), 2) + amount
+    save_bonus(bonus)
+
+# 📊 SQLite БД
+conn = sqlite3.connect("users.db")
 cursor = conn.cursor()
-
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS users (
-    user_id INTEGER PRIMARY KEY,
-    username TEXT,
-    first_name TEXT,
-    bonus INTEGER DEFAULT 2,
-    invited_by INTEGER
-)
-""")
+cursor.execute("""CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)""")
 conn.commit()
 
+# ⌨️ Түймелер
+main_kb = ReplyKeyboardMarkup(resize_keyboard=True)
+main_kb.add("▶️ Смотреть", "🔥 Жанр")
+main_kb.add("🛍 Магазин", "💎 Заработать")
+main_kb.add("🌸 PREMIUM", "💎 Баланс")
 
-# --- Keyboards ---
-def main_keyboard():
-    kb = ReplyKeyboardBuilder()
-    kb.button(text="▶️ Смотреть")
-    kb.button(text="💎 Заработать")
-    kb.button(text="🌸 PREMIUM")
-    kb.button(text="🛍 Магазин")
-    kb.button(text="🔥 Жанр")
-    kb.button(text="💎 Баланс")
-    return kb.as_markup(resize_keyboard=True)
+admin_kb = ReplyKeyboardMarkup(resize_keyboard=True)
+admin_kb.add("📥 Видео жүктеу (дет)", "📥 Видео жүктеу (взр)")
+admin_kb.add("📊 Статистика", "📣 Рассылка")
 
-
-# --- Handlers ---
-@dp.message(F.text == "/start")
-async def start_handler(message: Message):
-    user_id = message.from_user.id
-    username = message.from_user.username or ""
-    first_name = message.from_user.first_name or ""
-
-    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
-    user = cursor.fetchone()
-
-    if not user:
-        # Реферал коды
-        referrer = message.text.split()[1] if len(message.text.split()) > 1 else None
-        invited_by = int(referrer) if referrer and referrer.isdigit() else None
-
-        cursor.execute(
-            "INSERT INTO users (user_id, username, first_name, bonus, invited_by) VALUES (?, ?, ?, ?, ?)",
-            (user_id, username, first_name, 2, invited_by)
-        )
-        conn.commit()
-
-        if invited_by:
-            cursor.execute("UPDATE users SET bonus = bonus + 2 WHERE user_id = ?", (invited_by,))
-            conn.commit()
-            await bot.send_message(invited_by, f"🎉 Жаңа қолданушы тіркелді! Сізге 2 бонус берілді!")
-
-    await message.answer("Қош келдің! Мәзірден таңдаңыз:", reply_markup=main_keyboard())
-
-
-@dp.message(F.text == "💎 Баланс")
-async def balance_handler(message: Message):
-    cursor.execute("SELECT bonus FROM users WHERE user_id = ?", (message.from_user.id,))
-    bonus = cursor.fetchone()[0]
-    await message.answer(f"💰 Сіздің бонусыңыз: <b>{bonus}</b>")
-
-
-@dp.message(F.text == "🌸 PREMIUM")
-async def premium_handler(message: Message):
-    await message.answer("👑 VIP Бонустар:\n\n50 бонус = 2000тг\n100 бонус = 4000тг\n\nСатып алу үшін: @KazHubALU")
-
-
-@dp.message(F.text == "💎 Заработать")
-async def earn_handler(message: Message):
-    cursor.execute("UPDATE users SET bonus = bonus + 2 WHERE user_id = ?", (message.from_user.id,))
+# 📦 /start
+@dp.message_handler(commands=['start'])
+async def start(msg: types.Message):
+    user_id = msg.from_user.id
+    cursor.execute("INSERT OR IGNORE INTO users VALUES (?)", (user_id,))
     conn.commit()
-    await message.answer("✅ 2 бонус берілді! Тағы дос шақырыңыз: \nСіздің сілтемеңіз:\n"
-                         f"https://t.me/Darvinuyatszdaribot?start={message.from_user.id}")
+    update_bonus(user_id, 0)  # тіркелсе — бонус тексеру
+    ref = msg.get_args()
+    if ref and ref.isdigit() and int(ref) != user_id:
+        ref_id = int(ref)
+        # Каналдарға тіркелгенін тексер
+        joined = True
+        for channel in CHANNELS:
+            try:
+                member = await bot.get_chat_member(channel, user_id)
+                if member.status not in ['member', 'creator', 'administrator']:
+                    joined = False
+            except:
+                joined = False
+        if joined:
+            update_bonus(ref_id, 2)
+            await bot.send_message(ref_id, f"🎉 Сізге 2 бонус түсті! Реферал шақырғаныңыз үшін.")
+    await msg.answer("Қош келдің! Түймелерді пайдаланыңыз:", reply_markup=main_kb)
 
+# ▶️ Смотреть
+@dp.message_handler(lambda msg: msg.text == "▶️ Смотреть")
+async def watch_video(msg: types.Message):
+    user_id = msg.from_user.id
+    if get_bonus(user_id) >= 3:
+        update_bonus(user_id, -3)
+        await msg.answer_video(open("videos/detskiy.mp4", "rb"), caption="🎥 Детский видео")
+    else:
+        await msg.answer("❌ Бонус жетіспейді. '💎 Заработать' арқылы бонус алыңыз.")
 
-@dp.message(F.text == "▶️ Смотреть")
-async def watch_handler(message: Message):
-    cursor.execute("SELECT bonus FROM users WHERE user_id = ?", (message.from_user.id,))
-    bonus = cursor.fetchone()[0]
-    if bonus < 3:
-        await message.answer("❌ Көру үшін бонус жетпейді. '💎 Заработать' арқылы алыңыз.")
-        return
+# 🔥 Жанр
+@dp.message_handler(lambda msg: msg.text == "🔥 Жанр")
+async def genre(msg: types.Message):
+    await msg.answer("Қазір тек бір жанр бар: Детский видео. Көбірек қосылады.")
 
-    cursor.execute("UPDATE users SET bonus = bonus - 3 WHERE user_id = ?", (message.from_user.id,))
-    conn.commit()
-    await message.answer("🎬 Міне видео:\nhttps://t.me/your_channel/video_link")
+# 🛍 Магазин
+@dp.message_handler(lambda msg: msg.text == "🛍 Магазин")
+async def shop(msg: types.Message):
+    await msg.answer("💰 Бонустар сатып алу:\n\n50 бонус = 2000тг\n100 бонус = 4000тг\n\nКупить: @KazHubALU")
 
+# 💎 Заработать
+@dp.message_handler(lambda msg: msg.text == "💎 Заработать")
+async def earn_bonus(msg: types.Message):
+    user_id = msg.from_user.id
+    ref_link = f"https://t.me/Darvinuyatszdaribot?start={user_id}"
+    await msg.answer(f"👥 Дос шақырыңыз да бонус алыңыз!\nӘр тіркелген адам үшін 2 бонус.\n\nРеферал ссылкаңыз:\n{ref_link}")
 
-@dp.message(F.text == "🛍 Магазин")
-async def shop_handler(message: Message):
-    await message.answer("🛒 Жақында қосылады...")
+# 💎 Баланс
+@dp.message_handler(lambda msg: msg.text == "💎 Баланс")
+async def balance(msg: types.Message):
+    bonus = get_bonus(msg.from_user.id)
+    await msg.answer(f"💎 Сіздің бонусыңыз: {bonus}")
 
+# 🌸 PREMIUM
+@dp.message_handler(lambda msg: msg.text == "🌸 PREMIUM")
+async def premium(msg: types.Message):
+    await msg.answer("👑 VIP жазылым алу үшін: @KazHubALU")
 
-@dp.message(F.text == "🔥 Жанр")
-async def genre_handler(message: Message):
-    await message.answer("🎭 Жанр таңдауы жақында болады.")
+# 👑 Админ панелі
+@dp.message_handler(lambda msg: msg.from_user.id in ADMIN_IDS and msg.text == "/admin")
+async def admin_panel(msg: types.Message):
+    await msg.answer("🛠 Админ панелі:", reply_markup=admin_kb)
 
+# 📥 Видео жүктеу
+@dp.message_handler(lambda msg: msg.from_user.id in ADMIN_IDS and msg.text.startswith("📥"))
+async def upload_video(msg: types.Message):
+    await msg.answer("🎥 Видео жіберіңіз...")
 
-# --- Admin handlers ---
-@dp.message(F.text == "Қолданушы саны", F.from_user.id == ADMIN_ID)
-async def count_users(message: Message):
+@dp.message_handler(lambda msg: msg.from_user.id in ADMIN_IDS, content_types=types.ContentType.VIDEO)
+async def save_admin_video(msg: types.Message):
+    if "дет" in msg.caption.lower():
+        path = "videos/detskiy.mp4"
+    elif "взр" in msg.caption.lower():
+        path = "videos/vzroslyy.mp4"
+    else:
+        return await msg.answer("❗ Видеоны жіберу үшін тақырып (дет / взр) жазыңыз.")
+    await msg.video.download(destination_file=path)
+    await msg.answer("✅ Видео сақталды!")
+
+# 📊 Статистика
+@dp.message_handler(lambda msg: msg.from_user.id in ADMIN_IDS and msg.text == "📊 Статистика")
+async def stats(msg: types.Message):
     cursor.execute("SELECT COUNT(*) FROM users")
     count = cursor.fetchone()[0]
-    await message.answer(f"👥 Жалпы қолданушы саны: <b>{count}</b>")
+    await msg.answer(f"📈 Жалпы қолданушылар: {count}")
 
+# 📣 Рассылка
+broadcast_mode = {}
 
-@dp.message(F.text == "Рассылка", F.from_user.id == ADMIN_ID)
-async def ask_broadcast(message: Message):
-    await message.answer("✍️ Хабарлама мәтінін жазыңыз:")
+@dp.message_handler(lambda msg: msg.from_user.id in ADMIN_IDS and msg.text == "📣 Рассылка")
+async def broadcast_start(msg: types.Message):
+    broadcast_mode[msg.from_user.id] = True
+    await msg.answer("✉️ Хабарлама жіберіңіз:")
 
-
-@dp.message(F.from_user.id == ADMIN_ID)
-async def do_broadcast(message: Message):
+@dp.message_handler(lambda msg: broadcast_mode.get(msg.from_user.id))
+async def do_broadcast(msg: types.Message):
+    broadcast_mode[msg.from_user.id] = False
     cursor.execute("SELECT user_id FROM users")
     users = cursor.fetchall()
-    for user in users:
+    count = 0
+    for (uid,) in users:
         try:
-            await bot.send_message(user[0], message.text)
+            await bot.send_message(uid, msg.text)
+            count += 1
         except:
             pass
-    await message.answer("✅ Хабарлама жіберілді.")
+    await msg.answer(f"✅ Жіберілді: {count} адамға.")
 
-
-# --- Run bot ---
-async def main():
-    await dp.start_polling(bot)
-
+# 🟢 Запуск
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    asyncio.run(main())
+    if not os.path.exists("videos"):
+        os.mkdir("videos")
+    executor.start_polling(dp, skip_updates=True)
