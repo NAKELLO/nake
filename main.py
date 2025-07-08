@@ -6,20 +6,16 @@ from aiogram import F
 from aiogram.types import Message
 from aiogram.utils import executor
 
-API_TOKEN = os.getenv("API_TOKEN")  # Railway-де ENV арқылы
-ADMIN_ID = 7702280273  # Сіздің Telegram ID (тексеру үшін)
+API_TOKEN = os.getenv("API_TOKEN")  # Railway ENV-тен алады
+ADMIN_ID = 7702280273  # Өзіңнің Telegram ID-ң
 
 # Лог жүргізу
-logging.basicConfig(
-    filename='bot.log',
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(filename='bot.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
-# Дерекқор
+# SQLite дерекқорын жасау
 conn = sqlite3.connect('database.db')
 cursor = conn.cursor()
 
