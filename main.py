@@ -1,155 +1,77 @@
-import logging
-import json
 import os
-from aiogram import Bot, Dispatcher, executor, types
+import logging
+import sqlite3
+from aiogram import Bot, Dispatcher, types
+from aiogram import F
+from aiogram.types import Message
+from aiogram.utils import executor  # executor импорттау
 
-# 🔐 Token мен Admin ID
-API_TOKEN = '7748542247:AAGVgKPaOvHH7iDL4Uei2hM_zsI_6gCowkM'
-ADMIN_ID = 6927494520
-CHANNELS = ['@oqigalaruyatsiz', '@Qazhuboyndar']
+API_TOKEN = '7748542247:AAGVgKPaOvHH7iDL4Uei2hM_zsI_6gCowkM'  # Сіздің API токеніңіз
+ADMIN_ID = 7702280273  # Сіздің әкімші идентификаторыңыз
 
-# 🔧 Bot және Dispatcher
-bot = Bot(token=API_TOKEN, parse_mode="HTML")
-dp = Dispatcher(bot)
-logging.basicConfig(level=logging.INFO)
+# Лог жазу конфигурациясы
+logging.basicConfig(
+    filename='bot.log',  # Лог файлының аты
+    level=logging.INFO,  # Лог деңгейі
+    format='%(asctime)s - %(levelname)s - %(message)s'  # Лог форматы
+)
 
-# 📂 Файлдар
-VIDEOS_FILE = "videos.json"
-USERS_FILE = "users.json"
-videos = []
-users = {}
-state = {}
+# Ботты және диспетчерді инициализациялау
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher()
 
-# 📅 Видео мен қолданушыларды жүктеу
-if os.path.exists(VIDEOS_FILE):
-    with open(VIDEOS_FILE, "r", encoding="utf-8") as f:
-        videos = json.load(f)
+# SQLite дерекқорын қосу
+conn = sqlite3.connect('database.db')
+cursor = conn.cursor()
 
-if os.path.exists(USERS_FILE):
-    with open(USERS_FILE, "r", encoding="utf-8") as f:
-        users = json.load(f)
+# `users` кестесін құру
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS users (
+    user_id INTEGER PRIMARY KEY,
+    username TEXT,
+    first_name TEXT,
+    last_name TEXT
+)
+''')
+conn.commit()
 
-# 🗞 Сақтау функциялары
-def save_videos():
-    with open(VIDEOS_FILE, "w", encoding="utf-8") as f:
-        json.dump(videos, f, indent=2)
+# 👑 VIP батырмасы
+@dp.message(F.text == "VIP")
+async def vip(message: Message):
+    logging.info(f"User {message.from_user.id} requested VIP.")
+    await message.answer("👑 VIP Бонустар сатып алу:\n\n50 бонус = 2000тг\n100 бонус = 4000тг\n\nСатып алу үшін: @KazHubALU")
 
-def save_users():
-    with open(USERS_FILE, "w", encoding="utf-8") as f:
-        json.dump(users, f, indent=2)
+# 👥 Қолданушы саны
+@dp.message(F.text == "Қолданушы саны", F.from_user.id == ADMIN_ID)
+async def count_users(message: Message):
+    cursor.execute("SELECT COUNT(*) FROM users")
+    count = cursor.fetchone()[0]
+    logging.info(f"Admin {ADMIN_ID} requested user count: {count}.")
+    await message.answer(f"👥 Қолданушылар саны: {count}")
 
-# 🔀 Каналға тіркелгенін тексеру
-async def check_subscriptions(user_id):
-    for channel in CHANNELS:
+# 📣 Рассылка
+@dp.message(F.text == "Рассылка", F.from_user.id == ADMIN_ID)
+async def start_broadcast(message: Message):
+    logging.info(f"Admin {ADMIN_ID} started a broadcast.")
+    await message.answer("✉️ Хабарламаңызды жіберіңіз (барлық қолданушыларға таратылады).")
+
+@dp.message(F.from_user.id == ADMIN_ID, content_types=types.ContentType.TEXT)
+async def broadcast_text(message: Message):
+    cursor.execute("SELECT user_id FROM users")
+    users = cursor.fetchall()
+    for user in users:
         try:
-            member = await bot.get_chat_member(channel, user_id)
-            if member.status in ["left", "kicked"]:
-                return False
-        except:
-            return False
-    return True
+            await bot.send_message(user[0], message.text)
+            logging.info(f"Message sent to user {user[0]}.")
+        except Exception as e:
+            logging.error(f"Error sending message to {user[0]}: {e}")
+    await message.answer("✅ Барлығына жіберілді.")
 
-# 👨‍💼 Админ видео жібереді
-@dp.message_handler(content_types=types.ContentType.VIDEO)
-async def video_upload(msg: types.Message):
-    if msg.from_user.id != ADMIN_ID:
-        return
-    state[msg.from_user.id] = {
-        "file_id": msg.video.file_id,
-        "step": "title"
-    }
-    await msg.reply("🎨 Видео атауын жазыңыз:")
+# 📂 Папка жасау
+if not os.path.exists("saved_videos"):
+    os.makedirs("saved_videos")
 
-# 📝 Видео атауын енгізу
-@dp.message_handler(lambda m: state.get(m.from_user.id, {}).get("step") == "title")
-async def video_title(msg: types.Message):
-    st = state.pop(msg.from_user.id)
-    video = {
-        "id": len(videos) + 1,
-        "title": msg.text,
-        "file_id": st["file_id"],
-        "category": "kids",
-        "cost": 3
-    }
-    videos.append(video)
-    save_videos()
-    await msg.reply("✅ Видео сақталды!")
-
-# 🎮 Видео көру
-@dp.message_handler(lambda m: m.text == "👶 Детский")
-async def show_category(msg: types.Message):
-    user_id = str(msg.from_user.id)
-
-    if not await check_subscriptions(user_id):
-        text = "Ботты қолдану үшін келесі каналдарға тіркеліңіз:\n"
-        for ch in CHANNELS:
-            text += f"➡️ {ch}\n"
-        await msg.reply(text)
-        return
-
-    if user_id not in users or users[user_id]["balance"] < 1:
-        await msg.reply("❗ Сіздің бонусыңыз жеткіліксіз. Досыңызды шақырып бонус алыңыз!")
-        return
-
-    cat = "kids"
-    found = [v for v in videos if v["category"] == cat]
-    if not found:
-        await msg.reply("📂 Бұл категорияда видео жоқ.")
-        return
-
-    for v in found:
-        if users[user_id]["balance"] >= v["cost"]:
-            await bot.send_video(
-                msg.chat.id,
-                v["file_id"],
-                caption=f"{v['title']} — {v['cost']} бонус"
-            )
-            users[user_id]["balance"] -= v["cost"]
-            save_users()
-        else:
-            await msg.reply(f"❗ Бұл видеоны көру үшін {v['cost']} бонус қажет. Сіздің бонус: {users[user_id]['balance']}")
-
-# 📍 /start командасы
-@dp.message_handler(commands=["start"])
-async def start_cmd(msg: types.Message):
-    user_id = str(msg.from_user.id)
-    ref = msg.get_args()
-    if user_id not in users:
-        users[user_id] = {"balance": 2, "ref": ref if ref and ref != user_id else None}
-        if ref and ref in users:
-            users[ref]["balance"] += 2
-    save_users()
-
-    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("👶 Детский")
-    if msg.from_user.id == ADMIN_ID:
-        kb.add("📊 Статистика", "📢 Рассылка")
-    await msg.reply("Категория таңдаңыз:", reply_markup=kb)
-
-# 📊 Статистика және 📢 рассылка
-@dp.message_handler(lambda m: m.text == "📊 Статистика" and m.from_user.id == ADMIN_ID)
-async def stats(msg: types.Message):
-    total = len(users)
-    await msg.reply(f"👥 Барлық қолданушы: {total}")
-
-@dp.message_handler(lambda m: m.text == "📢 Рассылка" and m.from_user.id == ADMIN_ID)
-async def ask_broadcast(msg: types.Message):
-    state[msg.from_user.id] = {"step": "broadcast"}
-    await msg.reply("📨 Хабарламаңызды жазыңыз:")
-
-@dp.message_handler(lambda m: state.get(m.from_user.id, {}).get("step") == "broadcast")
-async def send_broadcast(msg: types.Message):
-    text = msg.text
-    state.pop(msg.from_user.id)
-    count = 0
-    for uid in users:
-        try:
-            await bot.send_message(uid, text)
-            count += 1
-        except:
-            continue
-    await msg.reply(f"✅ Жіберілді: {count} қолданушыға")
-
-# 🔁 Ботты іске қосу
-if __name__ == "__main__":
-    executor.start_polling(dp, skip_updates=True)
+# 🔄 Старт
+if __name__ == '__main__':
+    logging.info("Bot started.")
+    executor.start_polling(dp, skip_updates=True)  # executor арқылы polling бастау
