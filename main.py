@@ -6,7 +6,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils import executor
 
-API_TOKEN = '7748542247:AAEPCvB-3EFngPPv45SvBG_Nizh0qQmpwB4'
+API_TOKEN = '7731232005:AAGZA1_cFPvWaEjsY_m07QCAW4HCXUi6b34'
 ADMIN_IDS = [7702280273]  # Өз Telegram ID-ні қой
 CHANNELS = ["@oqigalaruyatsiz", "@Qazhuboyndar"]
 
@@ -170,4 +170,5 @@ if __name__ == "__main__":
     if not os.path.exists("videos"):
         os.mkdir("videos")
     executor.start_polling(dp, skip_updates=True)
+
 
