@@ -6,17 +6,17 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, C
 from aiogram.filters import CommandStart, Command
 from aiogram.enums import ChatMemberStatus
 
-# ====== VARIABLES ======
-API_TOKEN = os.getenv("8757577500:AAG7FNMvw54vsg9s343MB-DDCU9kOPS-Esk")
-ADMIN_ID = int(os.getenv("6688100480"))
-CHANNEL_USERNAME = os.getenv("@kazakcombots")
+# ====== VARIABLES (Railway Variables арқылы) ======
+API_TOKEN = os.getenv("8757577500:AAG7FNMvw54vsg9s343MB-DDCU9kOPS-Esk")        # Жаңа токенді Railway Variables-та қосасың
+ADMIN_ID = int(os.getenv("6688100480"))     # 6688100480
+CHANNEL_USERNAME = os.getenv("@kazakcombots")  # @kazakcombots
 
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-# ====== База қолданушылар үшін (сақтау memory-де) ======
+# ====== Қолданушыларды сақтау ======
 users_set = set()  # Қолданушылар id сақталады
 
 # ====== Каналга тіркелуді тексеру ======
@@ -41,8 +41,14 @@ async def start_handler(message: Message):
 
     if not is_subscribed:
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="📢 Каналга жазылу", url=f"https://t.me/{CHANNEL_USERNAME.replace('@','')}")],
-            [InlineKeyboardButton(text="✅ Тексеру", callback_data="check_sub")]
+            [InlineKeyboardButton(
+                text="📢 Каналга жазылу",
+                url=fhttps://t.me/kazakcombots.replace('@','')}"
+            )],
+            [InlineKeyboardButton(
+                text="✅ Тексеру",
+                callback_data="check_sub"
+            )]
         ])
         await message.answer(
             "❗ Ботты қолдану үшін каналға тіркелу керек.",
