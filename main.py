@@ -2,189 +2,221 @@ import asyncio
 import logging
 import aiosqlite
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
-from aiogram.filters import CommandStart
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from aiogram.filters import CommandStart, Text
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.enums import ChatMemberStatus
 
-# ================= CONFIG =================
-API_TOKEN = "8757577500:AAG7FNMvw54vsg9s343MB-DDCU9kOPS-Esk"
-ADMIN_ID = 6303091468
-CHANNEL_USERNAME = "@kazakcombots"
-BOT_USERNAME = "kazakcombot"
-# ==========================================
+# =================== Параметрлер ===================
+API_TOKEN = "8757577500:AAG7FNMvw54vsg9s343MB-DDCU9kOPS-Esk"   # Сенің бот токенің
+ADMIN_ID = 6303091468                                          # Сенің Telegram ID
+CHANNEL_USERNAME = "@kazakcombots"                               # Сенің канал username
+BOT_USERNAME = "@kazakcombot"                                   # Сенің бот username
+# ======================================================
 
 logging.basicConfig(level=logging.INFO)
 
+storage = MemoryStorage()
 bot = Bot(token=API_TOKEN)
-dp = Dispatcher()
+dp = Dispatcher(storage=storage)
 
-# ================= DATABASE =================
+# =================== FSM ===================
+class AdminStates(StatesGroup):
+    waiting_video = State()
+    waiting_photo = State()
+    giving_bonus = State()
+
+# =================== DATABASE ===================
 async def init_db():
     async with aiosqlite.connect("bot_database.db") as db:
         await db.execute("""
-        CREATE TABLE IF NOT EXISTS users(
-            id INTEGER PRIMARY KEY,
-            bonus INTEGER DEFAULT 2,
-            referrer INTEGER,
-            refs INTEGER DEFAULT 0,
-            video_i INTEGER DEFAULT 0,
-            photo_i INTEGER DEFAULT 0
-        )
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY,
+                bonus INTEGER DEFAULT 0,
+                ref TEXT DEFAULT ''
+            )
         """)
         await db.execute("""
-        CREATE TABLE IF NOT EXISTS media(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            type TEXT,
-            file_id TEXT
-        )
+            CREATE TABLE IF NOT EXISTS videos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file TEXT
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS photos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file TEXT
+            )
         """)
         await db.commit()
 
-# ================= START =================
+# =================== Каналға тіркелу ===================
+async def check_subscription(user_id: int):
+    try:
+        member = await bot.get_chat_member(CHANNEL_USERNAME, user_id)
+        return member.status in [
+            ChatMemberStatus.MEMBER,
+            ChatMemberStatus.ADMINISTRATOR,
+            ChatMemberStatus.CREATOR
+        ]
+    except:
+        return False
+
+# =================== Бастау командасы ===================
 @dp.message(CommandStart())
-async def start(message: Message):
+async def start_handler(message: Message):
     user_id = message.from_user.id
-    args = message.text.split()
-
-    referrer = None
-    if len(args) > 1:
-        try:
-            referrer = int(args[1])
-        except:
-            pass
-
+    args = message.get_args()  # реферал параметрі
     async with aiosqlite.connect("bot_database.db") as db:
-        await db.execute("INSERT OR IGNORE INTO users (id, referrer) VALUES (?,?)", (user_id, referrer))
+        # Қолданушыны қосу
+        await db.execute("INSERT OR IGNORE INTO users (id, bonus) VALUES (?, ?)", (user_id, 2))
+        # Егер реферал болса
+        if args:
+            ref_id = int(args)
+            await db.execute("UPDATE users SET bonus = bonus + 6 WHERE id = ?", (ref_id,))
         await db.commit()
 
-        if referrer and referrer != user_id:
-            await db.execute("UPDATE users SET bonus = bonus + 6, refs = refs + 1 WHERE id = ?", (referrer,))
-            await db.commit()
-            try:
-                await bot.send_message(referrer, "🎉 Сіз жаңа адам шақырдыңыз! +6 бонус берілді!")
-            except:
-                pass
+    is_subscribed = await check_subscription(user_id)
+    if not is_subscribed:
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton("📢 Каналга жазылу")],[KeyboardButton("✅ Тексеру")]],
+            resize_keyboard=True
+        )
+        await message.answer("❗ Ботты қолдану үшін каналға тіркелу керек.", reply_markup=keyboard)
+    else:
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton("📸 Фото көру"), KeyboardButton("🎥 Видео көру")]],
+            resize_keyboard=True
+        )
+        await message.answer("✅ Қош келдің! Бот жұмыс істеп тұр 🚀", reply_markup=keyboard)
 
-    kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🎥 Видео көру"), KeyboardButton(text="📸 Фото көру")],
-            [KeyboardButton(text="💎 Баланс"), KeyboardButton(text="👥 Реферал сілтеме")]
-        ],
-        resize_keyboard=True
-    )
-
-    await message.answer("🚀 Ботқа қош келдің!", reply_markup=kb)
-
-# ================= BALANCE =================
-@dp.message(F.text == "💎 Баланс")
-async def balance(message: Message):
-    async with aiosqlite.connect("bot_database.db") as db:
-        async with db.execute("SELECT bonus FROM users WHERE id=?", (message.from_user.id,)) as c:
-            b = await c.fetchone()
-            await message.answer(f"💎 Сіздің бонус: {b[0]}")
-
-# ================= REF LINK =================
-@dp.message(F.text == "👥 Реферал сілтеме")
-async def reflink(message: Message):
-    link = f"https://t.me/{BOT_USERNAME}?start={message.from_user.id}"
-    await message.answer(f"👥 Сіздің реферал сілтеме:\n{link}")
-
-# ================= MEDIA VIEW =================
-async def show_media(message: Message, mtype: str):
+# =================== Тексеру батырмасы ===================
+@dp.message(Text("✅ Тексеру"))
+async def check_sub_handler(message: Message):
     user_id = message.from_user.id
+    if await check_subscription(user_id):
+        await message.answer("✅ Рақмет! Енді ботты қолдана аласыз.")
+    else:
+        await message.answer("❌ Әлі тіркелмегенсің! Каналга жазылып, қайта тексер.")
 
-    # ADMIN шексіз бонус
-    if user_id != ADMIN_ID:
-        async with aiosqlite.connect("bot_database.db") as db:
-            async with db.execute("SELECT bonus FROM users WHERE id=?", (user_id,)) as c:
-                bonus = (await c.fetchone())[0]
-                if bonus < 3:
-                    await message.answer("❌ Бонус жетпейді!")
-                    return
+# =================== Фото / Видео батырмалары ===================
+@dp.message(Text("🎥 Видео көру"))
+async def show_videos(message: Message):
+    user_id = message.from_user.id
+    async with aiosqlite.connect("bot_database.db") as db:
+        async with db.execute("SELECT bonus FROM users WHERE id=?", (user_id,)) as cursor:
+            user_bonus = await cursor.fetchone()
+            if not user_bonus or user_bonus[0] < 3:
+                await message.answer("❌ Бонус жетіспейді. Реферал арқылы бонус жина!")
+                return
+        # Кезекпен видео алу
+        async with db.execute("SELECT file FROM videos ORDER BY id ASC") as cursor:
+            videos = await cursor.fetchall()
+            if videos:
+                for video in videos:
+                    await message.answer(video[0])
+                # Бонус азайту
                 await db.execute("UPDATE users SET bonus = bonus - 3 WHERE id=?", (user_id,))
                 await db.commit()
+            else:
+                await message.answer("Видео әлі қосылмаған.")
 
+@dp.message(Text("📸 Фото көру"))
+async def show_photos(message: Message):
+    user_id = message.from_user.id
     async with aiosqlite.connect("bot_database.db") as db:
-        async with db.execute("SELECT id,file_id FROM media WHERE type=? ORDER BY id", (mtype,)) as c:
-            files = await c.fetchall()
-            if not files:
-                await message.answer("Контент жоқ.")
+        async with db.execute("SELECT bonus FROM users WHERE id=?", (user_id,)) as cursor:
+            user_bonus = await cursor.fetchone()
+            if not user_bonus or user_bonus[0] < 1:
+                await message.answer("❌ Бонус жетіспейді. Реферал арқылы бонус жина!")
                 return
+        # Кезекпен фото алу
+        async with db.execute("SELECT file FROM photos ORDER BY id ASC") as cursor:
+            photos = await cursor.fetchall()
+            if photos:
+                for photo in photos:
+                    await message.answer(photo[0])
+                # Бонус азайту
+                await db.execute("UPDATE users SET bonus = bonus - 1 WHERE id=?", (user_id,))
+                await db.commit()
+            else:
+                await message.answer("Фото әлі қосылмаған.")
 
-        async with db.execute(f"SELECT {mtype}_i FROM users WHERE id=?", (user_id,)) as c:
-            idx = (await c.fetchone())[0]
-
-        file = files[idx % len(files)][1]
-
-        await db.execute(f"UPDATE users SET {mtype}_i = {mtype}_i + 1 WHERE id=?", (user_id,))
-        await db.commit()
-
-    if mtype == "video":
-        await message.answer_video(file)
-    else:
-        await message.answer_photo(file)
-
-@dp.message(F.text == "🎥 Видео көру")
-async def video(message: Message):
-    await show_media(message, "video")
-
-@dp.message(F.text == "📸 Фото көру")
-async def photo(message: Message):
-    await show_media(message, "photo")
-
-# ================= ADMIN PANEL =================
-@dp.message(F.from_user.id == ADMIN_ID)
+# =================== Админ панелі ===================
+@dp.message(Text("/admin"))
 async def admin_panel(message: Message):
-    kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="➕ Видео қосу"), KeyboardButton(text="➕ Фото қосу")],
-            [KeyboardButton(text="📊 Қолданушы саны"), KeyboardButton(text="🎁 Бонус беру")]
-        ],
-        resize_keyboard=True
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("❌ Сен админ емессің!")
+        return
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton("✏️ Видео қосу", callback_data="admin_add_video")],
+            [InlineKeyboardButton("🖼 Фото қосу", callback_data="admin_add_photo")],
+            [InlineKeyboardButton("👥 Қолданушылар санын көру", callback_data="admin_user_count")],
+            [InlineKeyboardButton("💎 Бонус беру", callback_data="admin_give_bonus")]
+        ]
     )
-    await message.answer("🛠 Админ панелі", reply_markup=kb)
+    await message.answer("🛠 Админ панелі", reply_markup=keyboard)
 
-# ================= ADD VIDEO =================
-@dp.message(F.video, F.from_user.id == ADMIN_ID)
-async def add_video(message: Message):
+# =================== Админ callback-тары ===================
+@dp.callback_query(F.data.startswith("admin_"))
+async def admin_callbacks(callback: CallbackQuery, state: FSMContext):
+    data = callback.data
+    if callback.from_user.id != ADMIN_ID:
+        await callback.answer("❌ Сен админ емессің!", show_alert=True)
+        return
+
+    if data == "admin_add_video":
+        await callback.message.answer("Видео сілтемесін жіберіңіз:")
+        await state.set_state(AdminStates.waiting_video)
+    elif data == "admin_add_photo":
+        await callback.message.answer("Фото сілтемесін жіберіңіз:")
+        await state.set_state(AdminStates.waiting_photo)
+    elif data == "admin_user_count":
+        async with aiosqlite.connect("bot_database.db") as db:
+            async with db.execute("SELECT COUNT(*) FROM users") as cursor:
+                count = await cursor.fetchone()
+                await callback.message.answer(f"👥 Қолданушылар саны: {count[0]}")
+    elif data == "admin_give_bonus":
+        await callback.message.answer("Кімге бонус бересіз (user_id енгізіңіз):")
+        await state.set_state(AdminStates.giving_bonus)
+
+# =================== Админ FSM ===================
+@dp.message(AdminStates.waiting_video, F.from_user.id == ADMIN_ID)
+async def save_video(message: Message, state: FSMContext):
+    video_url = message.text
     async with aiosqlite.connect("bot_database.db") as db:
-        await db.execute("INSERT INTO media(type,file_id) VALUES('video',?)", (message.video.file_id,))
+        await db.execute("INSERT INTO videos (file) VALUES (?)", (video_url,))
         await db.commit()
-    await message.answer("✅ Видео сақталды!")
+    await message.answer("✅ Видео қосылды!")
+    await state.clear()
 
-# ================= ADD PHOTO =================
-@dp.message(F.photo, F.from_user.id == ADMIN_ID)
-async def add_photo(message: Message):
-    file_id = message.photo[-1].file_id
+@dp.message(AdminStates.waiting_photo, F.from_user.id == ADMIN_ID)
+async def save_photo(message: Message, state: FSMContext):
+    photo_url = message.text
     async with aiosqlite.connect("bot_database.db") as db:
-        await db.execute("INSERT INTO media(type,file_id) VALUES('photo',?)", (file_id,))
+        await db.execute("INSERT INTO photos (file) VALUES (?)", (photo_url,))
         await db.commit()
-    await message.answer("✅ Фото сақталды!")
+    await message.answer("✅ Фото қосылды!")
+    await state.clear()
 
-# ================= USERS COUNT =================
-@dp.message(F.text == "📊 Қолданушы саны", F.from_user.id == ADMIN_ID)
-async def users_count(message: Message):
-    async with aiosqlite.connect("bot_database.db") as db:
-        async with db.execute("SELECT COUNT(*) FROM users") as c:
-            count = (await c.fetchone())[0]
-            await message.answer(f"👥 Қолданушы саны: {count}")
-
-# ================= GIVE BONUS =================
-@dp.message(F.text.startswith("🎁"), F.from_user.id == ADMIN_ID)
-async def give_bonus(message: Message):
-    await message.answer("Формат: user_id бонус")
-
-@dp.message(F.from_user.id == ADMIN_ID)
-async def bonus_input(message: Message):
+@dp.message(AdminStates.giving_bonus, F.from_user.id == ADMIN_ID)
+async def give_bonus(message: Message, state: FSMContext):
     try:
-        user_id, amount = map(int, message.text.split())
+        parts = message.text.split()
+        user_id = int(parts[0])
+        amount = int(parts[1])
         async with aiosqlite.connect("bot_database.db") as db:
             await db.execute("UPDATE users SET bonus = bonus + ? WHERE id=?", (amount, user_id))
             await db.commit()
-        await message.answer("✅ Бонус берілді!")
+        await message.answer(f"✅ {user_id} пайдаланушыға {amount} бонус берілді!")
     except:
-        pass
+        await message.answer("❌ Қате! Формат: user_id amount")
+    await state.clear()
 
-# ================= RUN =================
+# =================== MAIN ===================
 async def main():
     await init_db()
     await dp.start_polling(bot)
