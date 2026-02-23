@@ -7,9 +7,9 @@ from aiogram.filters import CommandStart
 from aiogram.enums import ChatMemberStatus
 
 # =================== Параметрлер ===================
-API_TOKEN = "8757577500:AAG7FNMvw54vsg9s343MB-DDCU9kOPS-Esk"        # Мұнда сенің бот токеніңді қой
-ADMIN_ID = 6303091468                 # Сенің Telegram ID
-CHANNEL_USERNAME = "@kazakcombots"    # Сенің канал username
+API_TOKEN = "8757577500:AAG7FNMvw54vsg9s343MB-DDCU9kOPS-Esk"       # Мысалы: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+ADMIN_ID = 6303091468                   # Сенің Telegram ID
+CHANNEL_USERNAME = "@kazakcombots"  # Сенің канал username
 # ===================================================
 
 logging.basicConfig(level=logging.INFO)
@@ -39,7 +39,7 @@ async def init_db():
         """)
         await db.commit()
 
-# =================== Каналға тіркелу ===================
+# =================== Каналға тіркелуді тексеру ===================
 async def check_subscription(user_id: int):
     try:
         member = await bot.get_chat_member(CHANNEL_USERNAME, user_id)
@@ -72,9 +72,7 @@ async def start_handler(message: Message):
         await message.answer("❗ Ботты қолдану үшін каналға тіркелу керек.", reply_markup=keyboard)
     else:
         keyboard = ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text="📸 Фото көру"), KeyboardButton(text="🎥 Видео көру")]
-            ],
+            keyboard=[[KeyboardButton(text="📸 Фото көру"), KeyboardButton(text="🎥 Видео көру")]],
             resize_keyboard=True
         )
         await message.answer("✅ Қош келдің! Бот жұмыс істеп тұр 🚀", reply_markup=keyboard)
@@ -92,6 +90,11 @@ async def check_sub_handler(message: Message):
 # =================== Фото / Видео батырмалары ===================
 @dp.message(F.text == "🎥 Видео көру")
 async def show_videos(message: Message):
+    user_id = message.from_user.id
+    if not await check_subscription(user_id):
+        await message.answer("❌ Алдымен каналға тіркелу керек.")
+        return
+
     async with aiosqlite.connect("bot_database.db") as db:
         async with db.execute("SELECT file FROM videos") as cursor:
             videos = await cursor.fetchall()
@@ -103,6 +106,11 @@ async def show_videos(message: Message):
 
 @dp.message(F.text == "📸 Фото көру")
 async def show_photos(message: Message):
+    user_id = message.from_user.id
+    if not await check_subscription(user_id):
+        await message.answer("❌ Алдымен каналға тіркелу керек.")
+        return
+
     async with aiosqlite.connect("bot_database.db") as db:
         async with db.execute("SELECT file FROM photos") as cursor:
             photos = await cursor.fetchall()
