@@ -1,0 +1,16 @@
+-- Қолданушылар таблицасы
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY
+);
+
+-- Видео таблицасы
+CREATE TABLE IF NOT EXISTS videos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file TEXT
+);
+
+-- Фото таблицасы
+CREATE TABLE IF NOT EXISTS photos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file TEXT
+);
