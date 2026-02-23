@@ -5,7 +5,7 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import CommandStart
 from aiogram.enums import ChatMemberStatus
 
-API_TOKEN = "ЖАНА_ТОКЕНДЫ_ОСЫ_ЖЕРГЕ_КОЙ"
+API_TOKEN = "8757577500:AAG7FNMvw54vsg9s343MB-DDCU9kOPS-Esk"
 ADMIN_ID = 6688100480
 CHANNEL_USERNAME = "@kazakcombots"
 
