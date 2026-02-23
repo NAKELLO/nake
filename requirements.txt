@@ -1,2 +1,2 @@
-aiogram==3.0.0b7
-aiosqlite==0.18.0
+aiogram==3.4.1
+aiosqlite
