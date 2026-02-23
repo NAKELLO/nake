@@ -90,9 +90,9 @@ async def reflink(message: Message):
 
 # ================= MEDIA VIEW =================
 async def show_media(message: Message, mtype: str):
-
     user_id = message.from_user.id
 
+    # ADMIN шексіз бонус
     if user_id != ADMIN_ID:
         async with aiosqlite.connect("bot_database.db") as db:
             async with db.execute("SELECT bonus FROM users WHERE id=?", (user_id,)) as c:
@@ -131,7 +131,7 @@ async def video(message: Message):
 async def photo(message: Message):
     await show_media(message, "photo")
 
-# ================= ADMIN =================
+# ================= ADMIN PANEL =================
 @dp.message(F.from_user.id == ADMIN_ID)
 async def admin_panel(message: Message):
     kb = ReplyKeyboardMarkup(
@@ -143,6 +143,7 @@ async def admin_panel(message: Message):
     )
     await message.answer("🛠 Админ панелі", reply_markup=kb)
 
+# ================= ADD VIDEO =================
 @dp.message(F.video, F.from_user.id == ADMIN_ID)
 async def add_video(message: Message):
     async with aiosqlite.connect("bot_database.db") as db:
@@ -150,6 +151,7 @@ async def add_video(message: Message):
         await db.commit()
     await message.answer("✅ Видео сақталды!")
 
+# ================= ADD PHOTO =================
 @dp.message(F.photo, F.from_user.id == ADMIN_ID)
 async def add_photo(message: Message):
     file_id = message.photo[-1].file_id
@@ -158,6 +160,7 @@ async def add_photo(message: Message):
         await db.commit()
     await message.answer("✅ Фото сақталды!")
 
+# ================= USERS COUNT =================
 @dp.message(F.text == "📊 Қолданушы саны", F.from_user.id == ADMIN_ID)
 async def users_count(message: Message):
     async with aiosqlite.connect("bot_database.db") as db:
@@ -165,6 +168,7 @@ async def users_count(message: Message):
             count = (await c.fetchone())[0]
             await message.answer(f"👥 Қолданушы саны: {count}")
 
+# ================= GIVE BONUS =================
 @dp.message(F.text.startswith("🎁"), F.from_user.id == ADMIN_ID)
 async def give_bonus(message: Message):
     await message.answer("Формат: user_id бонус")
